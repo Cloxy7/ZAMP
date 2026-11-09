@@ -90,12 +90,16 @@ def parallel_search(queries, meter):
 
 
 # ---- LLM -------------------------------------------------------------------
-def llm(prompt, model, key, meter, max_tokens=1500):
+def llm(prompt, model, key, meter, max_tokens=4000):
     def call():
         import anthropic
         msg = anthropic.Anthropic().messages.create(
             model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
-        return {"text": msg.content[0].text, "in": msg.usage.input_tokens, "out": msg.usage.output_tokens}
+        # Some models return a "thinking" block first. Keep only the text blocks.
+        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        if not text:
+            raise ServiceError("The model returned no text.")
+        return {"text": text, "in": msg.usage.input_tokens, "out": msg.usage.output_tokens}
 
     value, hit = cached("llm", f"{model}|{key}|{prompt}", lambda: with_retry(call), meter)
     if not hit:
