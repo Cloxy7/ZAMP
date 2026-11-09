@@ -155,6 +155,8 @@ textarea{line-height:1.55;resize:vertical}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font-weight:600;font-size:13.5px;border-radius:9px;padding:8px 14px}
 .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.mtag{margin-left:8px;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted,#777);white-space:nowrap}
+.mtag.yes{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.ok{background:var(--ok);border-color:var(--ok)}
 .btn.danger{background:var(--surface);color:var(--bad);border-color:var(--line)}
 .btn.danger:hover{border-color:var(--bad)}
@@ -797,7 +799,7 @@ function checksCard(r){if(!r.checks)return"";const fails=r.checks.filter(c=>!c.o
 function renderResult(animate){const r=cur;if(!r)return;let h="";
  if(!r.body){const m=ST[r.status]||ST["Stopped"];
   h+=`<div class="card outcome"><div class="ic ${m.c}">${IC[m.i]}</div><div><h3>${esc(OUT_TITLE(r))}</h3><p>${esc(r.reason)}</p>
-  ${r.choices?`<div class="actions">${r.choices.map((p,i)=>`<button class="btn ghost" type="button" data-pick="${i}">${IC.user}${esc(p.title)}, ${esc(p.current_company)}</button>`).join("")}</div>`:""}
+  ${r.choices?`<div class="actions">${r.choices.map((p,i)=>`<button class="btn ghost" type="button" data-pick="${i}">${IC.user}${esc(p.title)}, ${esc(p.current_company)}${p.company_match===true?`<span class="mtag yes">same company</span>`:p.company_match===false?`<span class="mtag">other company</span>`:""}</button>`).join("")}</div>`:""}
   ${r.suggestions&&r.suggestions.length?`<div class="actions">${r.suggestions.map(s=>`<button class="btn" type="button" data-person="${esc(s.name)}">${IC.play}Look up ${esc(s.name)}, ${esc(s.title)}</button>`).join("")}</div>`:""}
   ${/do-not-contact|based in|failed/.test(r.reason)?`<p class="faint" style="margin-top:10px">Stopping here is the right call.</p>`:""}
   </div></div>`;h+="<!--SIDE-->"+whyCard(r)}
