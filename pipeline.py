@@ -132,6 +132,8 @@ def plan(facts, person, input_company, rb):
     is_buyer = any(k in title for k in rb.get("buyer_titles", []))
     is_not = any(k in title for k in rb.get("not_buyer_titles", []))
     fit = "buyer" if is_buyer else ("not_buyer" if is_not else "unclear")
+    if rb.get("who_to_email") == "anyone":   # generic mode: no job-title gate
+        fit = "buyer"
     if fit == "not_buyer":
         return {"fit": fit, "status": NOT_BUYER, "flags": [f"'{person.get('title')}' is not a buyer for what we sell."],
                 "signals": [], "hook": None, "second": None, "angle": None, "moved": False}
@@ -387,7 +389,7 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
             d = research.draft(ctx, rb, meter)
     except research.ServiceError as e:
         yield ev(7, "stop", f"bad|Writing failed: {e}")
-        yield end(STOPPED, "The AI service failed while writing. The research is saved; run again to retry.",
+        yield end(STOPPED, f"The AI service failed while writing ({str(e)[:220]}). The research is saved; run again to retry.",
                   person=person, facts=facts, dropped=dropped, **{k: p[k] for k in ("signals", "hook", "second", "angle", "flags")})
         return
     opt_out = (rb.get("compliance") or {}).get("opt_out_line")
