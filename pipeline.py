@@ -316,6 +316,17 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
     # 4. Identify person
     yield ev(3, "run")
     people = data.get("people", [])
+    # The same person often shows up twice (two pages, slightly different title). Same name at the
+    # same company counts as one person, so we only ask "which one?" when the choices really differ.
+    merged = []
+    for p in people:
+        twin = next((m for m in merged if (m.get("name") or "").strip().lower() == (p.get("name") or "").strip().lower()
+                     and same_company(m.get("current_company") or "", p.get("current_company") or "")), None)
+        if twin is None:
+            merged.append(p)
+        elif not twin.get("title") and p.get("title"):
+            twin["title"] = p["title"]
+    people = merged
     if not people:
         yield ev(3, "stop", "bad|No source confirms who this person is")
         yield end(ATTN, "Could not confirm who this person is in any source.", dropped=dropped)
