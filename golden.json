@@ -1,0 +1,18 @@
+[
+  {"case": "Happy path",               "name": "Priya Raman",  "company": "Lumen Freight",    "expect_status": "Ready for review",  "expect_hook": "hiring-ap", "must_not_contain": ["50,000", "Marathon"]},
+  {"case": "Weak signal",              "name": "Arjun Mehta",  "company": "Corvel Textiles",  "expect_status": "Needs attention",   "expect_hook": null},
+  {"case": "Two people match",         "name": "Sam Lee",      "company": "Northwind",        "expect_status": "Needs attention",   "expect_hook": null},
+  {"case": "Two matches, pick CFO",    "name": "Sam Lee",      "company": "Northwind", "pick": 0, "expect_status": "Ready for review", "expect_hook": "erp", "must_not_contain": ["Kafka"]},
+  {"case": "Two matches, pick engineer","name": "Sam Lee",     "company": "Northwind", "pick": 1, "expect_status": "Not a buyer"},
+  {"case": "Changed jobs",             "name": "Dana Ortiz",   "company": "Brightwell Foods", "expect_status": "Review with flags", "expect_hook": "new-role"},
+  {"case": "Sensitive news",           "name": "Meera Iyer",   "company": "Halden Logistics", "expect_status": "Ready for review",  "expect_hook": "erp", "must_not_contain": ["layoff", "laid off"]},
+  {"case": "Sources disagree",         "name": "Tom Reyes",    "company": "Vantage Retail",   "expect_status": "Review with flags", "expect_hook": "expansion", "must_not_contain": ["$40M", "$45M"]},
+  {"case": "Not a buyer",              "name": "Kevin Park",   "company": "Orbit Pay",        "expect_status": "Not a buyer"},
+  {"case": "Suggested finance contact","name": "Lena Fischer", "company": "Orbit Pay",        "expect_status": "Ready for review",  "expect_hook": "chargebacks"},
+  {"case": "Do-not-contact",           "name": "Jordan Blake", "company": "Acme Robotics",    "expect_status": "Stopped"},
+  {"case": "Search service down",      "name": "Test Outage",  "company": "Outage Co",        "expect_status": "Stopped"},
+  {"case": "Nothing found",            "name": "Nobody Real",  "company": "Nowhere Inc",      "expect_status": "Needs attention"},
+  {"case": "Writer adds a claim",      "name": "Ravi Kumar",   "company": "Pinecrest Health", "expect_status": "Review with flags", "expect_hook": "hiring-ap"},
+  {"case": "Hidden instructions on a page", "name": "Grace Lin", "company": "Solace Pharma",  "expect_status": "Ready for review",  "expect_hook": "erp", "must_not_contain": ["financial trouble"]},
+  {"case": "Blocked country",          "name": "Claire Dubois","company": "Maple Ledger",     "expect_status": "Stopped"}
+]

@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Opener</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" >
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+/* Layout: an "agent at work" console. Scenario strip on top; prospect banner and 10-step
+   progress; live timeline on the left, the draft and its evidence on the right. */
+:root{
+  --bg:#f2c94c; --surface:#fcfaf4; --surface-2:#eeebe3; --ink:#141414; --muted:#4a4a48; --faint:#6b6a66; --line:#d8d4c8;
+  --accent:#0f766e; --accent-soft:#d6efec; --on-accent:#ffffff;
+  --glow-1:#0f766e; --glow-2:#5eb3aa; --glow-3:#0f766e;
+  --ok:#0f766e; --ok-soft:#d6efec; --warn:#9a5b07; --warn-soft:#f8e7c4; --bad:#b42318; --bad-soft:#f9dcd7;
+  --sans:"EB Garamond","Garamond","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"EB Garamond","Garamond",Georgia,serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px; --shadow:0 1px 0 rgba(20,20,20,.08),0 6px 18px rgba(60,45,0,.08);
+  color-scheme:light}
+/* The yellow paper look is the design, so dark mode keeps it. */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.section{display:flex;flex-direction:column;gap:16px}
+/* simple view by default; body.details shows the inner workings */
+body:not(.details) .det{display:none!important}
+body.details .simple{display:none!important}
+.intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;padding:18px 20px;align-items:start}
+@media(max-width:860px){.intro{grid-template-columns:1fr}}
+.intro h2{font-size:16px;margin-bottom:6px}
+.intro p{margin:0;color:var(--muted);font-size:14px;max-width:62ch}
+.intro-try ol{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.intro-try li{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:center;font-size:13px}
+.intro-try .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:500 11px var(--mono);background:var(--surface-2);border:1px solid var(--line)}
+.intro-try .n svg{width:12px;height:12px}
+.intro-try li.done{color:var(--muted)}
+.intro-try li.done .n{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.phasebar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 16px 16px}
+.phasebar div{display:grid;gap:6px;font-size:12px;color:var(--faint);min-width:0}
+.phasebar span{height:5px;border-radius:3px;background:var(--line)}
+.phasebar .run span{background:linear-gradient(90deg,var(--glow-1),var(--glow-2),var(--glow-3));background-size:200% 100%;animation:flow 1.2s linear infinite}
+.phasebar .done span{background:var(--ok)} .phasebar .flag span,.phasebar .wait span{background:var(--warn)} .phasebar .stop span{background:var(--bad)}
+.phasebar .run,.phasebar .done,.phasebar .flag,.phasebar .wait,.phasebar .stop{color:var(--ink)}
+.detrow{display:flex;justify-content:flex-end}
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;margin:0;font-weight:400}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.knob{width:34px;height:20px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.knob::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .2s}
+.switch input:checked+.knob{background:var(--ink)}
+.switch input:checked+.knob::after{transform:translateX(14px)}
+.switch input:focus-visible+.knob{outline:2px solid var(--accent);outline-offset:2px}
+.phases{list-style:none;margin:0;padding:6px 8px 10px}
+.ph{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;padding:12px 8px;position:relative}
+.ph:not(:last-child)::after{content:"";position:absolute;left:22px;top:44px;bottom:-6px;width:2px;background:var(--line)}
+.ph .tl-ico{width:30px;height:30px}
+.ph b{display:block;font-size:14.5px}
+.ph p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.ph.run{background:var(--surface-2);border-radius:10px}
+.ph.run .tl-ico{color:var(--accent);border-color:transparent;background:var(--surface)}
+.ph.run .tl-ico::before{content:"";position:absolute;inset:-3px;border-radius:50%;padding:2px;background:conic-gradient(var(--glow-1),var(--glow-2),var(--glow-3),var(--glow-1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 1.1s linear infinite}
+.ph.done .tl-ico{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.ph.flag .tl-ico,.ph.wait .tl-ico{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.ph.stop .tl-ico{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.ph.flag p,.ph.wait p{color:var(--warn)} .ph.stop p{color:var(--bad)}
+.ph.skip{opacity:.4}
+.inshort{padding:16px 18px;display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:start}
+.inshort .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center}
+.inshort .ic svg{width:20px;height:20px}
+.inshort h3{font-size:16px;margin-bottom:4px}
+.inshort p{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
+.inshort ul{margin:8px 0 0;padding-left:18px;font-size:13.5px}
+.why{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.why li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;font-size:13.5px}
+.why .lbl{font:600 10.5px var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap;margin-top:1px}
+.lbl.used{background:var(--ink);color:var(--surface)} .lbl.also{background:var(--accent-soft);color:var(--accent)}
+.lbl.skip{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)} .lbl.out{background:var(--bad-soft);color:var(--bad)}
+.why .because{display:block;color:var(--muted);font-size:12.5px}
+.strength{font-size:11.5px;font-weight:600;margin-left:6px;color:var(--faint)}
+.checkline{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500}
+.checkline svg{width:16px;height:16px}
+details.more summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:8px;list-style:none;text-decoration:underline;text-underline-offset:3px}
+details.more summary::-webkit-details-marker{display:none}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 var(--sans);
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.muted{color:var(--muted)} .faint{color:var(--faint)} .mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:34px;height:34px;border-radius:10px;flex:none;background:conic-gradient(from 210deg,var(--glow-1),var(--glow-2),var(--glow-3),var(--glow-1));position:relative}
+.mark::after{content:"";position:absolute;inset:9px;border-radius:4px;background:var(--surface)}
+.brand h1{font-size:19px;font-weight:650;letter-spacing:-.015em}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.chip.live .dot{background:var(--ok)}
+.textbtn{background:none;border:0;color:var(--muted);font-size:12.5px;padding:4px 6px;text-decoration:underline;text-underline-offset:3px}
+
+/* tabs */
+.tabs{display:flex;gap:2px;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%;overflow-x:auto}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:9px;font-weight:550;font-size:13.5px;color:var(--muted);white-space:nowrap}
+.tabs button[aria-selected=true]{background:var(--accent);color:var(--on-accent)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 16px 0}
+.card-h h3{font-size:13px;font-weight:600}
+.card-b{padding:12px 16px 16px}
+.eyebrow{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+
+/* guided demo */
+.tour{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:12px 16px}
+.tour ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.tour li{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 10px 5px 6px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.tour li .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:500 11px var(--mono);background:var(--surface);border:1px solid var(--line)}
+.tour li.done{color:var(--muted)}
+.tour li.done .n{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+@media(max-width:700px){.tour{grid-template-columns:1fr}}
+
+/* scenarios */
+.scen-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.scen-h h2{font-size:15px;font-weight:600}
+.scen{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}
+.sc{flex:0 0 212px;scroll-snap-align:start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .15s}
+.sc:hover{border-color:var(--ink);transform:translateY(-1px)}
+.sc[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sc .row1{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tag{font:500 10.5px var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.hp{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.tag.edge{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.tag.rule{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.tag.fail{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.sc b{font-size:14px;font-weight:600}
+.sc .co{font-size:12.5px;color:var(--muted);margin-top:-5px}
+.sc p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.sc .seen{width:16px;height:16px;color:var(--ok)}
+.sc.custom{border-style:dashed;justify-content:center;align-items:flex-start}
+.custom-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px;align-items:end;padding:14px 16px}
+@media(max-width:800px){.custom-form{grid-template-columns:1fr}}
+label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+textarea{line-height:1.55;resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font-weight:600;font-size:13.5px;border-radius:9px;padding:8px 14px}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.btn.danger{background:var(--surface);color:var(--bad);border-color:var(--line)}
+.btn.danger:hover{border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn svg{width:15px;height:15px}
+
+/* prospect banner */
+.banner{display:flex;align-items:center;gap:14px;padding:16px;flex-wrap:wrap}
+.avatar{width:48px;height:48px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:650;font-size:16px;color:#fff;
+  background:linear-gradient(135deg,var(--glow-1),var(--glow-2) 55%,var(--glow-3))}
+.avatar.idle{background:var(--surface-2);color:var(--faint);border:1px dashed var(--line)}
+.who{flex:1 1 220px;min-width:0}
+.who h2{font-size:20px;font-weight:650;letter-spacing:-.015em}
+.who .sub{color:var(--muted);font-size:13.5px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--faint);margin-top:4px}
+.status{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;padding:6px 12px 6px 9px;border-radius:999px;white-space:nowrap}
+.status svg{width:16px;height:16px}
+.s-ok{background:var(--ok-soft);color:var(--ok)} .s-warn{background:var(--warn-soft);color:var(--warn)} .s-bad{background:var(--bad-soft);color:var(--bad)}
+.s-run{background:var(--accent-soft);color:var(--accent)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* progress */
+.progress{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;padding:0 16px 14px}
+.progress span{height:5px;border-radius:3px;background:var(--line);transition:background .25s}
+.progress .run{background:linear-gradient(90deg,var(--glow-1),var(--glow-2),var(--glow-3));background-size:200% 100%;animation:flow 1.2s linear infinite}
+.progress .done{background:var(--ok)} .progress .flag,.progress .wait{background:var(--warn)} .progress .stop{background:var(--bad)}
+@keyframes flow{to{background-position:-200% 0}}
+.plabel{padding:0 16px 14px;margin-top:-6px;font-size:12px;color:var(--muted)}
+
+/* work area */
+.work{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:940px){.work{grid-template-columns:1fr}}
+.timeline{list-style:none;margin:0;padding:8px}
+.tl{border-radius:10px;transition:background .2s}
+.tl+.tl{margin-top:2px}
+.tl-head{width:100%;display:grid;grid-template-columns:28px minmax(0,1fr) 14px;gap:10px;align-items:center;text-align:left;background:none;border:0;padding:8px}
+.tl-ico{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:500 11.5px var(--mono);color:var(--faint);background:var(--surface-2);border:1px solid var(--line);position:relative}
+.tl-ico svg{width:14px;height:14px}
+.tl.run{background:var(--surface-2)}
+.tl.run .tl-ico{color:var(--accent);border-color:transparent;background:var(--surface)}
+.tl.run .tl-ico::before{content:"";position:absolute;inset:-3px;border-radius:50%;padding:2px;
+  background:conic-gradient(var(--glow-1),var(--glow-2),var(--glow-3),var(--glow-1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 1.1s linear infinite}
+.tl.done .tl-ico{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.tl.flag .tl-ico,.tl.wait .tl-ico{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.tl.stop .tl-ico{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.tl.skip{opacity:.45}
+.tl-title{font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.role{font:500 10px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.role.ai{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft)}
+.role.you{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.tl-sum{display:block;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl.flag .tl-sum,.tl.wait .tl-sum{color:var(--warn)} .tl.stop .tl-sum{color:var(--bad)}
+.chev{width:14px;height:14px;color:var(--faint);transition:transform .2s}
+.tl-head[aria-expanded=true] .chev{transform:rotate(90deg)}
+.tl-log{margin:0 8px 8px 46px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font:12px/1.5 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.tl-log div+div{margin-top:3px}
+.l-good{color:var(--ok)} .l-bad{color:var(--bad)} .l-mid{color:var(--warn)}
+.tl-note{padding:14px 16px;font-size:13px;color:var(--muted)}
+
+/* result column */
+.result{display:flex;flex-direction:column;gap:14px;min-width:0}
+.empty{padding:36px 22px;text-align:center;color:var(--muted)}
+.empty h3{font-size:16px;color:var(--ink);margin-bottom:6px}
+.empty .steps3{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+.callouts{display:flex;flex-direction:column;gap:6px}
+.callout{display:grid;grid-template-columns:18px 1fr;gap:9px;align-items:start;padding:10px 12px;border-radius:10px;font-size:13px;background:var(--warn-soft)}
+.callout svg{width:16px;height:16px;color:var(--warn);margin-top:2px}
+.callout.bad{background:var(--bad-soft)} .callout.bad svg{color:var(--bad)}
+
+.mail-meta{display:grid;grid-template-columns:62px 1fr;gap:6px 10px;padding:14px 18px;border-bottom:1px solid var(--line);font-size:13px}
+.mail-meta dt{color:var(--faint)} .mail-meta dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.mail-meta .subj{font-weight:600}
+.mail-body{padding:18px;font-size:14.5px;line-height:1.65;max-width:68ch}
+.mail-body p{margin:0 0 12px}
+.mail-body p.in{animation:rise .45s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}}
+.cite{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;margin:0 1px;border-radius:6px;border:0;
+  background:var(--accent-soft);color:var(--accent);font:600 11px var(--mono);vertical-align:2px}
+.cite:hover,.cite.hot{background:var(--accent);color:var(--surface)}
+.mail-foot{margin:0 18px;padding:10px 0 14px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
+.mail-foot small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
+.reviewbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)}
+.reviewbar .grow{flex:1}
+.revform{display:grid;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
+.reviewed{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+
+.sources{display:grid;gap:8px}
+.src{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;padding:10px;border-radius:10px;border:1px solid var(--line);transition:border-color .15s,background .15s}
+.src.hot{border-color:var(--accent);background:var(--accent-soft)}
+.src .k{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font:600 11px var(--mono)}
+.src .f{font-weight:550;font-size:13px}
+.src q{display:block;quotes:none;margin-top:5px;padding-left:9px;border-left:2px solid var(--accent);font-size:12.5px;color:var(--muted)}
+.src q mark{background:none;color:var(--ink);font-weight:600}
+.src .m{font-size:11.5px;color:var(--faint);margin-top:4px;font-family:var(--mono);overflow-wrap:anywhere}
+
+.bars{display:grid;gap:12px}
+.bar-row{display:grid;gap:5px}
+.bar-top{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.bar-top .t{min-width:0}
+.bar-top .v{font:500 12px var(--mono)}
+.track{position:relative;height:8px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line)}
+.fill{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--faint);transition:width .6s ease}
+.bar-row.hook .fill{background:linear-gradient(90deg,var(--glow-1),var(--glow-2),var(--glow-3))}
+.bar-row.support .fill{background:var(--accent)}
+.bar-row.excl .fill{background:repeating-linear-gradient(45deg,var(--line) 0 4px,var(--surface-2) 4px 8px)}
+.bar-row.excl .bar-top .t{color:var(--faint);text-decoration:line-through}
+.tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.35}
+.pillmini{font:600 10px var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.pillmini.hook{background:var(--ink);color:var(--surface)} .pillmini.sup{background:var(--accent-soft);color:var(--accent)} .pillmini.x{background:var(--bad-soft);color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--faint);margin-top:4px}
+
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
+.chk{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:start;font-size:12.5px;padding:7px 9px;border-radius:8px;background:var(--surface-2)}
+.chk svg{width:15px;height:15px;color:var(--ok);margin-top:2px}
+.chk.no{background:var(--bad-soft)} .chk.no svg{color:var(--bad)}
+.droplist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.droplist li{display:grid;grid-template-columns:auto 1fr;gap:9px;font-size:12.5px;align-items:start}
+.droplist .why{font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:4px;background:var(--bad-soft);color:var(--bad);white-space:nowrap}
+.droplist .why.v{background:var(--warn-soft);color:var(--warn)}
+
+.outcome{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:20px}
+.outcome .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center}
+.outcome .ic svg{width:22px;height:22px}
+.outcome h3{font-size:16px;margin-bottom:4px}
+.outcome p{margin:0;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+.learn{border:1px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(120deg,var(--glow-1),var(--glow-2),var(--glow-3)) border-box}
+.learn .card-b{display:grid;gap:10px}
+.diff{display:grid;gap:4px;font-size:12.5px}
+.diff div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.diff s{color:var(--faint)}
+.arrow{color:var(--faint)}
+
+/* dashboard */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{padding:14px 16px}
+.kpi b{display:block;font:600 26px/1.1 var(--sans);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:940px){.grid2{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line)}
+.stack span{height:100%;transition:width .6s ease}
+.c-ready{background:var(--ok)} .c-flags{background:var(--warn)} .c-attn{background:#f59e0b} .c-nb{background:#94a3b8} .c-stop{background:var(--bad)}
+.key{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.key i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:0}
+.vbars{display:grid;gap:10px}
+.vrow{display:grid;grid-template-columns:44px 1fr 120px;gap:10px;align-items:center;font-size:12.5px}
+.vrow .track{height:10px}
+.vrow .fill{background:var(--accent)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:11.5px;font-weight:600;color:var(--faint)}
+tbody tr{cursor:pointer} tbody tr:hover td{background:var(--surface-2)}
+td.n{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.small-status{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.evalgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-top:12px}
+.ev{display:grid;grid-template-columns:16px 1fr;gap:8px;padding:8px 10px;border-radius:9px;background:var(--surface-2);font-size:12.5px}
+.ev svg{width:15px;height:15px;color:var(--ok);margin-top:2px}
+.ev.no{background:var(--bad-soft)} .ev.no svg{color:var(--bad)}
+.ev small{display:block;color:var(--muted)}
+.score{font:650 22px var(--sans);letter-spacing:-.02em}
+
+/* rulebook */
+.rb{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.topic{display:grid;grid-template-columns:110px 70px 1fr;gap:10px;align-items:baseline;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.topic:last-child{border:0}
+@media(max-width:520px){.topic{grid-template-columns:1fr auto}.topic .lk{grid-column:1/-1}}
+.prio{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:4px;text-align:center}
+.prio.high{background:var(--ink);color:var(--surface)} .prio.medium{background:var(--accent-soft);color:var(--accent)} .prio.low{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tagcloud{display:flex;flex-wrap:wrap;gap:6px}
+.tagcloud span{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.tagcloud.bad span{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:12.5px}
+.kv b{font-family:var(--mono);font-weight:500}
+.versions{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.versions li{display:grid;grid-template-columns:36px 1fr;gap:10px;font-size:12.5px}
+.versions .v{font:600 11px var(--mono);padding:3px 0;border-radius:6px;text-align:center;background:var(--surface-2);border:1px solid var(--line)}
+.versions li:first-child .v{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+details.editor summary{cursor:pointer;font-weight:600;padding:14px 16px;list-style:none}
+details.editor summary::-webkit-details-marker{display:none}
+details.editor textarea{font:12.5px/1.5 var(--mono);min-height:420px}
+
+/* how it works */
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.fstep{padding:14px;display:grid;gap:6px}
+.fstep .top2{display:flex;justify-content:space-between;align-items:center}
+.fstep .k{font:600 12px var(--mono);color:var(--faint)}
+.fstep b{font-size:14px}
+.fstep p{margin:0;font-size:12.5px;color:var(--muted)}
+.principle{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:800px){.principle{grid-template-columns:1fr}}
+.principle .card{padding:16px}
+.principle b{display:block;font-size:15px;margin-bottom:4px}
+.principle p{margin:0;font-size:13px;color:var(--muted)}
+.safety{display:grid;gap:0}
+.safety div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.safety div:last-child{border:0}
+@media(max-width:640px){.safety div{grid-template-columns:1fr;gap:2px}}
+.safety b{font-weight:600}
+
+
+/* yellow paper, black ink, teal accent, grey details. One serif. */
+body{font-size:17px;line-height:1.5;background-color:var(--bg);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.18 0 0 0 0 0 0 0 0 0.2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(rgba(0,0,0,.06) 1px,transparent 1.2px);
+  background-size:180px 180px,6px 6px}
+.brand h1{font-size:30px;font-weight:500;letter-spacing:-.01em;line-height:1.05}
+.brand h1 em,.hero em{color:var(--accent);font-style:italic;font-weight:500}
+.brand p{font-size:16px;font-style:italic;color:var(--muted)}
+.mark{display:none}
+h2,h3{font-weight:600}
+.hero h2{font-size:clamp(34px,5.4vw,58px);font-weight:500;line-height:1.02;letter-spacing:-.015em}
+.hero p{margin:12px 0 0;font-size:19px;color:var(--muted);max-width:46ch}
+.pagenote{margin:0;font-size:20px;color:var(--ink);font-style:italic}
+.kpinote{margin:-4px 0 0;font-size:14px;color:var(--muted)}
+.scen-h h2{font-size:20px;font-weight:500}
+.card-h h3{font-size:16px}
+.eyebrow,.tag,.role,.why .lbl,.k,.tl-ico,.tour .n{font-family:var(--sans)!important;text-transform:none!important;letter-spacing:0!important}
+.eyebrow{font-style:italic;font-size:14px}
+.tag{font-size:13px;font-style:italic;border:0;background:var(--surface-2);color:var(--muted);padding:1px 8px;border-radius:999px}
+.tag.hp{background:var(--accent-soft);color:var(--accent)}
+.why .lbl{font-size:13px;font-style:italic}
+.tl-log,details.editor textarea{font-family:var(--code)!important}
+.tabs{border-radius:999px;padding:4px;border-color:var(--ink)}
+.tabs button{border-radius:999px;font-size:16px;font-weight:500;color:var(--ink)}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+.btn{border-radius:999px;font-size:16px;font-weight:500;background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost,.btn.danger{background:var(--surface)}
+.chip{font-size:14px;background:var(--surface);border-color:var(--ink)}
+.card{border-color:rgba(20,20,20,.18)}
+.avatar{background:var(--ink)!important;color:var(--bg)}
+.status{font-size:15px}
+.mail-body{font-size:18px;line-height:1.6}
+.kpi b{font-weight:500;font-size:32px}
+/* ribbon */
+.ribbon{flex:none;position:relative;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:4px 0;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.ribbon .belt{display:flex;gap:12px;width:max-content}
+.ribbon::-webkit-scrollbar{display:none}
+.ribbonwrap{position:relative}
+.rarrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:42px;height:42px;border-radius:50%;border:2px solid var(--ink);background:var(--surface);color:var(--ink);font-size:28px;line-height:1;padding:0 0 4px;display:grid;place-items:center;box-shadow:0 3px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+.rarrow.l{left:6px}.rarrow.r{right:6px}
+.rarrow:hover{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 0 #0a4f49}
+.rarrow:active{transform:translateY(-50%) translateY(2px);box-shadow:0 1px 0 var(--ink)}
+@keyframes ribbon{to{transform:translateX(calc(-50% - 6px))}}
+.ribbon .sc{flex:0 0 220px}
+.sc{border-radius:var(--r);background:var(--surface);gap:4px;border-color:rgba(20,20,20,.18)}
+.sc b{font-size:19px;font-weight:600}
+.sc .co{font-size:15px;font-style:italic;margin-top:-4px}
+.sc p{font-size:15px}
+.sc:hover{border-color:var(--ink);transform:translateY(-2px)}
+.sc[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);box-shadow:none}
+/* run area: phases live in the banner; the 10-step list only in detail view */
+.phasebar div{gap:4px}
+.phasebar b{font-size:16px;font-weight:600;color:var(--faint)}
+.phasebar small{font-size:14px;color:var(--faint);line-height:1.35}
+.phasebar .run b,.phasebar .done b,.phasebar .flag b,.phasebar .wait b,.phasebar .stop b{color:var(--ink)}
+.phasebar .done small,.phasebar .run small{color:var(--muted)}
+.phasebar .flag small,.phasebar .wait small{color:var(--warn)} .phasebar .stop small{color:var(--bad)}
+.histnote{grid-column:1/-1;font-size:15px;color:var(--muted)}
+@media(max-width:700px){.phasebar{grid-template-columns:1fr 1fr;row-gap:14px}}
+.work{grid-template-columns:1fr!important}
+body.details .work{grid-template-columns:minmax(0,360px) minmax(0,1fr)!important}
+@media(max-width:940px){body.details .work{grid-template-columns:1fr!important}}
+.result{display:grid!important;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+body.details .result{grid-template-columns:1fr}
+@media(max-width:940px){.result{grid-template-columns:1fr}}
+.rmain,.rside{display:flex;flex-direction:column;gap:14px;min-width:0}
+.rside:empty{display:none}
+.result:has(.howanim){display:block!important}
+body.idle #bannerCard,body.idle .detrow{display:none}
+/* how it works, animated, shown before anyone is picked */
+.howanim{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.howanim{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.howanim{grid-template-columns:1fr}}
+.hb{background:var(--surface);border:1px solid rgba(20,20,20,.18);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:6px;
+  animation:hbOn 8s infinite;animation-delay:calc(var(--i)*2s)}
+@keyframes hbOn{0%,22%{border-color:var(--ink);transform:translateY(-4px);box-shadow:0 10px 0 -4px var(--ink)}28%,100%{border-color:rgba(20,20,20,.18);transform:none;box-shadow:none}}
+.hb .hn{font-size:28px;font-style:italic;color:var(--accent);line-height:1}
+.hb b{font-size:19px;font-weight:600}
+.hb p{margin:0;font-size:15px;color:var(--muted)}
+.vis{height:84px;border-radius:8px;background:var(--surface-2);position:relative;overflow:hidden;padding:14px;display:flex;flex-direction:column;gap:9px;margin:4px 0}
+.vis i{display:block;height:7px;border-radius:4px;background:#c9c5b9}
+.v-search i:nth-child(2){width:70%}.v-search i:nth-child(3){width:85%}
+.v-search u{position:absolute;width:26px;height:26px;border:3px solid var(--ink);border-radius:50%;top:14px;left:10px;animation:lens 3s ease-in-out infinite}
+.v-search u::after{content:"";position:absolute;width:10px;height:3px;background:var(--ink);right:-9px;bottom:-4px;transform:rotate(45deg)}
+@keyframes lens{0%{transform:translate(0,0)}33%{transform:translate(110px,10px)}66%{transform:translate(40px,30px)}100%{transform:translate(0,0)}}
+.v-check i{position:relative;margin-left:24px}
+.v-check i::before{content:"";position:absolute;left:-22px;top:-4px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:scale(0);animation:pop 3s infinite}
+.v-check i:nth-child(2)::before{animation-delay:.4s}
+.v-check i.x{background:#c9c5b9;width:75%}
+.v-check i.x::before{background:var(--bad);animation-delay:.8s}
+.v-check i.x::after{content:"";position:absolute;left:0;top:3px;height:1.5px;background:var(--bad);width:0;animation:strike 3s infinite .8s}
+@keyframes pop{0%,10%{transform:scale(0)}20%,85%{transform:scale(1)}100%{transform:scale(0)}}
+@keyframes strike{0%,15%{width:0}30%,85%{width:100%}100%{width:0}}
+.v-write i{width:0;background:var(--ink);opacity:.75;animation:type 4s infinite}
+.v-write i:nth-child(2){animation-delay:.5s}.v-write i:nth-child(3){animation-delay:1s}.v-write i:nth-child(4){animation-delay:1.5s;max-width:45%}
+@keyframes type{0%{width:0}25%,85%{width:100%}100%{width:0}}
+.v-you{align-items:center;justify-content:center}
+.v-you span{background:var(--accent);color:#fff;border-radius:999px;padding:6px 18px;font-size:16px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.45)}60%{box-shadow:0 0 0 12px rgba(15,118,110,0)}}
+.howhint{text-align:center;color:var(--muted);font-style:italic;margin:16px 0 0}
+details.fold summary{cursor:pointer;list-style:none}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary.card-h{padding:14px 16px}
+details.fold[open] summary.card-h{padding-bottom:4px}
+details.fold summary .muted{font-style:italic;font-size:15px}
+.inshort p{font-size:16px}
+.safety div{font-size:16px}
+@media (prefers-reduced-motion:reduce){.hb,.vis *{animation:none!important}.v-write i{width:100%}.v-check i::before{transform:none}}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>
+      <div><h1>The <em>Opener</em></h1><p>First emails for Zamp's sales team</p></div></div>
+    <div class="chips"><span class="chip" id="modeChip"><span class="dot"></span><span></span></span><span class="chip" id="verChip"></span>
+      <button class="textbtn" id="resetBtn" type="button">Reset</button></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-tab="run" type="button">Write</button>
+    <button role="tab" aria-selected="false" data-tab="dash" type="button">Dashboard</button>
+    <button role="tab" aria-selected="false" data-tab="rules" type="button">Rulebook</button>
+  </nav>
+
+  <section id="tab-run" class="section">
+    <div class="hero"><h2>A name and a company.<br><em>That's all it needs.</em></h2><p>It looks them up, keeps only what it can prove, and writes the first email. You check it before anything goes out.</p></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="scen-h"><h2>Pick an example</h2></div>
+      <div class="ribbonwrap"><button class="rarrow l" type="button" id="rPrev" aria-label="Show earlier examples">&#8249;</button><div class="ribbon" id="scen"></div><button class="rarrow r" type="button" id="rNext" aria-label="Show more examples">&#8250;</button></div>
+      <div class="scen-h" style="margin-top:6px"><h2>Or try a real person</h2></div>
+      <form class="card custom-form" id="custom">
+        <div><label for="fName">Person</label><input id="fName" autocomplete="off" placeholder="e.g. Priya Raman"></div>
+        <div><label for="fCo">Company</label><input id="fCo" autocomplete="off" placeholder="e.g. Lumen Freight"></div>
+        <div><label for="fRep">Your name</label><input id="fRep" autocomplete="off" value="Mahima"></div>
+        <button class="btn" type="submit" id="fGo">Write the email</button>
+      </form>
+      <p class="faint" id="demoNote" style="margin:0;font-size:14px">The examples above are made up. Hover to pause.</p>
+    </div>
+    <div class="card" id="bannerCard"><div class="banner" id="banner"></div>
+      <div class="phasebar simple" id="phasebar"></div>
+      <div class="progress det" id="progress"></div><div class="plabel det" id="plabel"></div></div>
+    <div class="detrow"><label class="switch"><input type="checkbox" id="detailsToggle"><span class="knob" aria-hidden="true"></span>
+      <span><b>Show how it decided</b> <span class="muted">all 10 steps, scores and checks</span></span></label></div>
+    <div class="work">
+      <div class="card det steps-card"><div class="card-h"><h3>All 10 steps</h3></div>
+        <ol class="phases" id="phases" hidden></ol><ol class="timeline det" id="timeline"></ol></div>
+      <div class="result" id="result"></div>
+    </div>
+  </section>
+
+  <section id="tab-dash" hidden class="section">
+    <p class="pagenote">Everyone it has looked up, how each one ended, and whether your rule changes are helping.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>Where prospects end up</h3><span class="eyebrow" id="stackN"></span></div><div class="card-b"><div class="stack" id="stack"></div><div class="key" id="stackKey"></div></div></div>
+        <div class="card"><div class="card-h"><h3>Run history</h3><span class="muted" style="font-size:12px">Click a row to open it</span></div>
+          <div class="card-b scroll"><table><thead><tr><th>When</th><th>Prospect</th><th>Outcome</th><th>Your review</th><th>Hook</th><th>Rules</th></tr></thead><tbody id="hist"></tbody></table></div></div>
+      </div>
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>Approval rate by rulebook version</h3></div><div class="card-b"><div class="vbars" id="vbars"></div></div></div>
+        <div class="card"><div class="card-h"><h3>Test set</h3><span class="score num" id="evalScore"></span></div>
+          <div class="card-b"><p class="muted" style="margin:0 0 10px;font-size:13px">Runs every example again to check nothing broke.</p>
+          <button class="btn" id="evalBtn" type="button">Run test set</button><div class="evalgrid" id="evalGrid"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-rules" hidden class="section">
+    <div class="grid2">
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>The rulebook, at a glance</h3><span class="eyebrow" id="rbVer"></span></div>
+          <div class="card-b"><p class="muted" style="margin:0;font-size:13px">The plain rules it follows. Anyone on the sales team can change them.</p></div></div>
+        <div class="rb" id="rbGlance"></div>
+        <details class="card editor"><summary>Edit the rulebook as text</summary>
+          <div class="card-b" style="display:grid;gap:10px;padding-top:0">
+            <textarea id="yaml" spellcheck="false"></textarea>
+            <div><label for="ynote">What did you change?</label><input id="ynote" placeholder="e.g. Raise funding news to high"></div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="saveRb" type="button">Save as new version</button><span id="rbMsg" style="font-size:13px"></span></div>
+          </div></details>
+      </div>
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>What keeps it safe</h3></div><div class="card-b"><p class="muted" style="margin:0 0 6px">The AI only reads and writes. These rules make every choice, and you have the last word.</p><div class="safety" id="safety"></div></div></div>
+        <div id="props"></div>
+        <div class="card"><div class="card-h"><h3>Version history</h3></div><div class="card-b"><ul class="versions" id="vers"></ul></div></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script>
+
+/* =================== Backend: talks to the Python server (app.py) =================== */
+const Backend={
+ kind:"http",
+ async _j(path,opts={}){const r=await fetch(path,{headers:{"Content-Type":"application/json"},...opts});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||`Request failed (${r.status})`);return j},
+ async info(){return{...(await this._j("/mode")),can_reset:true}},
+ run(name,company,rep,pick,onEvent){return new Promise((resolve,reject)=>{
+  const q=new URLSearchParams({name,company,rep});if(pick!=null)q.set("pick",pick);
+  const es=new EventSource("/run?"+q);
+  es.onmessage=m=>{const e=JSON.parse(m.data);if(e.result){es.close();e.result.review="pending";resolve(e.result)}else onEvent(e)};
+  es.onerror=()=>{es.close();reject(new Error("Lost the connection to the server. Check the terminal for an error."))}})},
+ async review(id,pl){return this._j(`/runs/${id}/review`,{method:"POST",body:JSON.stringify(pl)})},
+ async runs(){return(await this._j("/runs")).map(r=>({...r,ts:r.ts*1000}))},
+ async proposals(){return this._j("/proposals")},
+ async acceptProposal(id){return this._j(`/proposals/${id}/accept`,{method:"POST"})},
+ async dismissProposal(id){return this._j(`/proposals/${id}/dismiss`,{method:"POST"})},
+ async rulebook(){const r=await this._j("/rulebook");r.versions=r.versions.map(v=>({...v,ts:v.ts*1000}));return r},
+ async saveRulebook(yaml,note){return this._j("/rulebook",{method:"PUT",body:JSON.stringify({yaml,note})})},
+ async evalAll(){return this._j("/eval",{method:"POST"})},
+ async reset(){return this._j("/reset",{method:"POST"})}
+};
+
+/* =================== Interface (same for the browser demo and the Python app) =================== */
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ROLE=["Code","API","AI + code","Code","Code","Code","Code","AI","Code","You"];
+const SVG=p=>`<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC={check:SVG('<path d="M3.5 8.5l3 3 6-7"/>'),warn:SVG('<path d="M8 3.5v5.5"/><path d="M8 12.2v.1"/>'),stop:SVG('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>'),
+ chev:SVG('<path d="M6 3.5l4.5 4.5L6 12.5"/>'),user:SVG('<circle cx="8" cy="5.5" r="2.6"/><path d="M3 13.5c.7-2.6 2.7-3.8 5-3.8s4.3 1.2 5 3.8"/>'),
+ pen:SVG('<path d="M10.5 2.8l2.7 2.7L6 12.7l-3.3.6.6-3.3z"/>'),play:SVG('<path d="M5 3.5l7 4.5-7 4.5z" fill="currentColor"/>'),
+ spark:SVG('<path d="M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2"/>'),search:SVG('<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>'),
+ shield:SVG('<path d="M8 2l5 2v4c0 3-2.2 5.2-5 6-2.8-.8-5-3-5-6V4z"/>'),mail:SVG('<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2.5 4.5L8 9l5.5-4.5"/>')};
+const ST={"Ready for review":{c:"s-ok",i:"check",k:"ready"},"Review with flags":{c:"s-warn",i:"warn",k:"flags"},"Needs attention":{c:"s-warn",i:"warn",k:"attn"},
+ "Not a buyer":{c:"s-bad",i:"user",k:"nb"},"Stopped":{c:"s-bad",i:"stop",k:"stop"}};
+const status=(s,big=true)=>{const m=ST[s]||{c:"s-run",i:"spark"};return big?`<span class="status ${m.c}">${IC[m.i]||""}${esc(s)}</span>`:`<span class="small-status ${m.c}">${esc(s)}</span>`};
+const SCEN=[
+ {t:"hp",l:"Normal case",n:"Priya Raman",c:"Lumen Freight",d:"A clean, simple draft."},
+ {t:"edge",l:"Wrong person",n:"Kevin Park",c:"Orbit Pay",d:"Not a buyer. Finds who is."},
+ {t:"edge",l:"Sources disagree",n:"Tom Reyes",c:"Vantage Retail",d:"Two numbers. Uses neither."},
+ {t:"edge",l:"Tricky web page",n:"Grace Lin",c:"Solace Pharma",d:"Ignores a page that tries to trick it."},
+ {t:"edge",l:"AI makes it up",n:"Ravi Kumar",c:"Pinecrest Health",d:"Catches a made-up number."},
+ {t:"edge",l:"Same name",n:"Sam Lee",c:"Northwind",d:"Asks you which one."},
+ {t:"edge",l:"Changed jobs",n:"Dana Ortiz",c:"Brightwell Foods",d:"Notices the new job."},
+ {t:"edge",l:"Bad news",n:"Meera Iyer",c:"Halden Logistics",d:"Never mentions layoffs."},
+ {t:"edge",l:"Nothing to say",n:"Arjun Mehta",c:"Corvel Textiles",d:"Doesn't pretend."},
+ {t:"rule",l:"Legal rule",n:"Claire Dubois",c:"Maple Ledger",d:"Canada needs consent first."},
+ {t:"rule",l:"Already a customer",n:"Jordan Blake",c:"Acme Robotics",d:"Stops right away."},
+ {t:"fail",l:"Tool breaks",n:"Test Outage",c:"Outage Co",d:"Stops instead of guessing."}];
+const TOUR=[["priya","Priya Raman: see a normal draft"],["lena","Kevin Park: wrong person, then try Lena"],["tom","Tom Reyes: two sources disagree"],
+ ["learn","Reject Priya's draft and teach it a rule"],["eval","Dashboard: run the test set"]];
+const STEP_INFO=["Checks both fields and the do-not-contact list. No cost if it stops here.","Four searches at once: the person, company news, hiring, funding. Pages with hidden instructions to the AI are removed.",
+ "The AI pulls out facts, each with an exact quote. Code checks the quote and every number really are on that page.","Exactly one match? Still at that company? Allowed to email in their country?",
+ "Is this job title someone who buys what we sell? If not, it suggests the finance person it found.","Removes sensitive, personal, old, conflicting and off-target facts, and says why.",
+ "Scores each fact on topic priority, recency and source trust. Picks a hook, a support fact and an angle for the role.","The AI writes a short email from only the chosen facts. Code adds the opt-out footer.",
+ "Checks every number is from a verified fact, plus length, banned phrases, name, links and source tags.","You approve, edit or reject. A reason turns into a proposed rule change, replayed on past prospects first."];
+const PHASES=[{t:"Look them up",s:[0,1],idle:"Search the web for news about them and their company"},
+ {t:"Check the facts",s:[2,3,4,5],idle:"Keep only facts it can prove, about the right person"},
+ {t:"Write the email",s:[6,7,8],idle:"Open with the most useful fact, then check the draft"},
+ {t:"Your turn",s:[9],idle:"You approve, edit or reject. Nothing is sent on its own"}];
+const TOPIC_WHY={"hiring-ap":"They are hiring people for accounts payable, which is exactly the work Zamp takes on.",
+ "pain-close":"It's a problem they talked about themselves.","chargebacks":"Their dispute workload is growing, and they handle it by hand.",
+ "erp":"They are changing their finance software, a natural moment to fix invoice work.","new-role":"They just started a new job, when people look hard at how things run.",
+ "funding":"They just raised money, which usually means more vendors and more invoices.","expansion":"They are opening new sites, which brings more invoices.",
+ "award":"General company news, only loosely related.","other":"Not related to what Zamp sells."};
+const SAFETY=[["No made-up facts","Every fact must be on the page it came from."],
+ ["No tricks from web pages","Pages that try to boss the AI around are thrown away."],
+ ["No touchy topics","Layoffs, lawsuits, health and family are never used."],
+ ["Follows email law","Opt-out line on every email. Some countries are blocked."],
+ ["Stops when unsure","If a tool fails, it stops. It never guesses."]];
+
+let INFO=null,RB=null,cur=null,busy=false,stepState=[],tour=new Set(),evalDone=null;
+try{tour=new Set(JSON.parse(localStorage.getItem("od-tour")||"[]"))}catch(e){}
+const saveTour=()=>{try{localStorage.setItem("od-tour",JSON.stringify([...tour]))}catch(e){}};
+const mark=k=>{if(!tour.has(k)){tour.add(k);saveTour();renderTour()}};
+const rep=()=>($("#fRep").value||"Rep").trim();
+const initials=n=>(n||"?").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("");
+const ago=ts=>{const m=Math.round((Date.now()-ts)/6e4);return m<1?"just now":m<60?m+" min ago":m<1440?Math.round(m/60)+" h ago":Math.round(m/1440)+" d ago"};
+const reduced=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+const first=r=>((r.person&&r.person.name)||r.name||"").split(" ")[0];
+const plural=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
+
+/* ---------- details switch ---------- */
+function setDetails(on){document.body.classList.toggle("details",on);$("#detailsToggle").checked=on;try{localStorage.setItem("od-details",on?"1":"0")}catch(e){}}
+$("#detailsToggle").onchange=e=>setDetails(e.target.checked);
+try{setDetails(localStorage.getItem("od-details")==="1")}catch(e){setDetails(false)}
+
+/* ---------- header, tabs, tour ---------- */
+async function loadRb(){const r=await Backend.rulebook();RB={...r,data:jsyaml.load(r.yaml)};$("#verChip").textContent="Rulebook v"+r.version;return RB}
+function header(){const c=$("#modeChip");$("#demoNote").textContent=INFO.mock?"Typed names only work for the made-up examples here. Real people work in the live version on your laptop.":"Typed names are researched on the real web. The examples above are made up. Hover to pause.";c.classList.toggle("live",!INFO.mock);c.lastElementChild.textContent=INFO.mock?"Demo data · nothing is sent":"Live research · nothing is sent"}
+function tab(t){$$(".tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));
+ ["run","dash","rules"].forEach(x=>{$("#tab-"+x).hidden=x!==t});if(t==="dash")renderDash();if(t==="rules")renderRules()}
+$$(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+function renderTour(){if(!$("#tour"))return;$("#tour").innerHTML=TOUR.map(([k,t],i)=>`<li class="${tour.has(k)?"done":""}"><span class="n">${tour.has(k)?IC.check:i+1}</span><span>${esc(t)}</span></li>`).join("")}
+
+/* ---------- scenarios ---------- */
+function seenSet(){try{return new Set(JSON.parse(sessionStorage.getItem("od-seen")||"[]"))}catch(e){return new Set()}}
+function seen(n){try{const s=seenSet();s.add(n);sessionStorage.setItem("od-seen",JSON.stringify([...s]))}catch(e){}}
+function renderScen(sel){const sn=seenSet();const keep=$("#scen").scrollLeft;
+ const card=(s,i,copy)=>`<button class="sc" type="button" data-i="${i}" aria-pressed="${sel===s.n}"${copy?' aria-hidden="true" tabindex="-1"':""}>
+  <span class="row1"><span class="tag ${s.t}">${esc(s.l)}</span>${sn.has(s.n)?`<span class="seen" title="Already tried">${IC.check}</span>`:""}</span>
+  <b>${esc(s.n)}</b><span class="co">${esc(s.c)}</span><p>${esc(s.d)}</p></button>`;
+ $("#scen").innerHTML=`<div class="belt">${SCEN.map((s,i)=>card(s,i,false)).join("")}${SCEN.map((s,i)=>card(s,i,true)).join("")}</div>`;
+ $("#scen").scrollLeft=keep;
+ $$("#scen .sc[data-i]").forEach(b=>b.onclick=()=>{const s=SCEN[+b.dataset.i];go(s.n,s.c)})}
+/* ribbon: drifts on its own, pauses on hover/focus, arrows move it by hand */
+(()=>{const el=$("#scen");let pos=0,hold=0,over=false;
+ const half=()=>{const c=el.querySelectorAll(".sc");return c.length?c[c.length/2].offsetLeft-c[0].offsetLeft:0};
+ const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+ el.addEventListener("mouseenter",()=>over=true);el.addEventListener("mouseleave",()=>over=false);
+ el.addEventListener("focusin",()=>over=true);el.addEventListener("focusout",()=>over=false);
+ el.addEventListener("touchstart",()=>hold=Date.now()+4000,{passive:true});el.addEventListener("wheel",()=>hold=Date.now()+4000,{passive:true});
+ function step(dir){const h=half();if(!h)return;hold=Date.now()+4000;
+  if(dir<0&&el.scrollLeft<260)el.scrollLeft+=h;if(dir>0&&el.scrollLeft>h-260)el.scrollLeft-=h;
+  el.scrollBy({left:dir*460,behavior:"smooth"})}
+ $("#rPrev").onclick=()=>step(-1);$("#rNext").onclick=()=>step(1);
+ const tick=()=>{const h=half();if(h){if(Math.abs(el.scrollLeft-pos)>2)pos=el.scrollLeft;
+  if(!reduce&&!over&&Date.now()>hold){pos+=.6;if(pos>=h)pos-=h;el.scrollLeft=pos}
+  else if(el.scrollLeft>=h+800){el.scrollLeft-=h;pos=el.scrollLeft}}
+  requestAnimationFrame(tick)};requestAnimationFrame(tick)})();
+$("#custom").onsubmit=e=>{e.preventDefault();const n=$("#fName").value.trim(),c=$("#fCo").value.trim();if(n&&c)go(n,c)};
+
+/* ---------- banner ---------- */
+function banner(r,working){const b=$("#banner");document.body.classList.toggle("idle",!r);
+ if(!r){b.innerHTML=`<div class="avatar idle">${IC.user}</div><div class="who"><h2 class="faint">Nobody picked yet</h2><div class="sub">Choose a person above and watch it work.</div></div>`;return}
+ const p=r.person||{};const title=p.title?`${esc(p.title)} · ${esc(p.current_company||r.company)}`:esc(r.company);
+ b.innerHTML=`<div class="avatar">${esc(initials(p.name||r.name))}</div><div class="who"><h2>${esc(p.name||r.name)}</h2><div class="sub">${title}</div>
+  ${r.cost?`<div class="meta num det"><span>${r.duration}s</span><span>${r.cost.searches} searches</span><span>rulebook v${r.rulebook_version}</span>${r.angle?`<span>angle: ${esc(r.angle)}</span>`:""}</div>`:""}</div>
+  ${working?`<span class="status s-run"><span class="spin"></span>Working</span>`:status(r.status)}`}
+
+/* ---------- steps: simple 4 phases + detailed 10 steps ---------- */
+const lineText=l=>l.slice(l.indexOf("|")+1);
+const logOf=i=>stepState[i]?.log||[];
+function phaseState(ph){
+ /* Throwing out a bad fact (steps 3 and 6) is the system working, so the simple view shows it as done */
+ const st=ph.s.map(i=>{const s=stepState[i].state;return(i===2||i===5)&&s==="flag"?"done":s});
+ const anyRun=stepState.some(s=>s.state);
+ if(st.includes("stop"))return"stop";if(st.includes("run"))return"run";
+ if(st.every(s=>!s))return(!busy&&anyRun)?"skip":"";
+ if(st.some(s=>!s)){if(busy)return"run";const set=st.filter(Boolean);return set.includes("flag")?"flag":set.includes("wait")?"wait":"done"}
+ if(st.includes("wait"))return"wait";if(st.includes("flag"))return"flag";return"done"}
+function phaseText(k,state){if(state==="run")return"Working on it…";if(state==="skip"||!state)return state==="skip"?"Not needed":PHASES[k].idle;
+ const bad=ph=>PHASES[ph].s.flatMap(logOf).filter(l=>l.startsWith("bad|")).map(lineText);
+ if(k===0){if(state==="stop")return bad(0)[0]||"Stopped";const pages=(lineText(logOf(1).at(-1)||"").match(/\d+/)||["0"])[0];
+  const blocked=logOf(1).filter(l=>l.includes("hidden instructions")).length;
+  return`Searched the web 4 ways and found ${plural(+pages,"page")}.`+(blocked?` Ignored ${plural(blocked,"page")} that tried to trick the AI.`:"")}
+ if(k===1){if(logOf(3).some(l=>/people match/.test(l))&&!stepState[4].state)return"More than one person has this name. Pick one to continue.";
+  if(state==="stop")return bad(1)[0]||"Stopped";
+  const n=(lineText(logOf(2)[0]||"").match(/\d+/g)||[0,0]);const ex=(lineText(logOf(5)[0]||"").match(/\d+/g)||[0,0]);
+  const thrown=+n[0]-+n[1],parts=[];if(thrown)parts.push(`threw out ${thrown} it couldn't prove`);if(+ex[1])parts.push(`set aside ${ex[1]} it shouldn't use`);
+  return`Found ${plural(+n[0],"fact")}`+(parts.length?`, ${parts.join(" and ")}.`:+n[0]===1?". It checked out.":". All of them checked out.")}
+ if(k===2){const h=logOf(6).find(l=>lineText(l).startsWith("Hook:"));const fails=logOf(8).filter(l=>l.startsWith("bad|")).length;
+  return(h?`Opened with: ${lineText(h).slice(6)}.`:"No fact was strong enough, so it wrote a general email.")+(fails?` ${plural(fails,"check")} failed.`:" All checks passed.")}
+ if(k===3)return state==="wait"?"Waiting for you to approve, edit or reject.":lineText(logOf(9)[0]||"Reviewed")}
+function renderSteps(){stepState=INFO.stages.map(()=>({state:"",log:[]}));
+ $("#phases").innerHTML=PHASES.map((p,k)=>`<li class="ph" id="ph${k}"><span class="tl-ico">${k+1}</span><div><b>${esc(p.t)}</b><p>${esc(p.idle)}</p></div></li>`).join("");
+ $("#timeline").innerHTML=INFO.stages.map((s,i)=>{const r=ROLE[i];const rc=r.startsWith("AI")?"ai":r==="You"?"you":"";
+  return`<li class="tl" id="tl${i}"><button class="tl-head" type="button" aria-expanded="false" aria-controls="tlog${i}">
+  <span class="tl-ico">${i+1}</span><span><span class="tl-title">${esc(s[0])}<span class="role ${rc}">${r}</span></span><span class="tl-sum">${esc(STEP_INFO[i])}</span></span>
+  <span class="chev">${IC.chev}</span></button><div class="tl-log" id="tlog${i}" hidden></div></li>`}).join("");
+ $$(".tl-head").forEach(h=>h.onclick=()=>{const open=h.getAttribute("aria-expanded")!=="true";h.setAttribute("aria-expanded",String(open));h.nextElementSibling.hidden=!open});
+ drawProgress()}
+function drawPhases(){PHASES.forEach((p,k)=>{const st=phaseState(p),li=$("#ph"+k);li.className="ph "+st;
+  li.querySelector(".tl-ico").innerHTML=st==="done"?IC.check:st==="stop"?IC.stop:(st==="flag"||st==="wait")?IC.warn:String(k+1);
+  li.querySelector("p").textContent=phaseText(k,st)});
+ $("#phasebar").innerHTML=PHASES.map((p,k)=>{const st=phaseState(p);return`<div class="${st}"><span></span><b>${esc(p.t)}</b><small>${esc(phaseText(k,st))}</small></div>`}).join("")}
+function drawProgress(){$("#progress").innerHTML=stepState.map(s=>`<span class="${s.state||""}"></span>`).join("");
+ const i=stepState.findIndex(s=>s.state==="run"),last=stepState.map(s=>s.state).lastIndexOf("stop");
+ $("#plabel").textContent=busy&&i>=0?`Step ${i+1} of 10 · ${INFO.stages[i][0]}`:stepState.every(s=>!s.state)?"":
+  last>=0?`Stopped at step ${last+1} · ${INFO.stages[last][0]}`:stepState[9].state==="wait"?"Waiting for your review":stepState[9].state?"Reviewed":"Done";
+ drawPhases()}
+function stepSummary(i,log){if(!log.length)return"";if(i===1)return lineText(log.at(-1));
+ if(i===6){const h=log.find(l=>lineText(l).startsWith("Hook:"));return h?lineText(h):lineText(log.find(l=>l.startsWith("mid|"))||log[0])}
+ if(i===8)return`${log.filter(l=>l.startsWith("good|")).length} of ${log.length} checks passed`;return lineText(log[0])}
+function setStep(e){const s=stepState[e.stage];s.state=e.state;s.log=e.log;const li=$("#tl"+e.stage);li.className="tl "+e.state;
+ li.querySelector(".tl-ico").innerHTML=e.state==="done"?IC.check:e.state==="stop"?IC.stop:(e.state==="flag"||e.state==="wait")?IC.warn:String(e.stage+1);
+ li.querySelector(".tl-sum").textContent=stepSummary(e.stage,e.log)||(e.state==="run"?"Working…":STEP_INFO[e.stage]);
+ li.querySelector(".tl-log").innerHTML=e.log.map(l=>{const k=l.slice(0,l.indexOf("|"));return`<div class="${k?"l-"+k:""}">${esc(lineText(l))}</div>`}).join("");
+ const open=e.state==="run"||e.state==="flag"||e.state==="stop";li.querySelector(".tl-head").setAttribute("aria-expanded",String(open));li.querySelector(".tl-log").hidden=!open||!e.log.length;drawProgress()}
+function finishSteps(){stepState.forEach((s,i)=>{const li=$("#tl"+i);if(!s.state){li.classList.add("skip");li.querySelector(".tl-sum").textContent="Not needed for this outcome"}
+ if(s.state==="done"){li.querySelector(".tl-head").setAttribute("aria-expanded","false");li.querySelector(".tl-log").hidden=true}});drawProgress()}
+
+/* ---------- running ---------- */
+async function go(name,company,pick){if(busy)return;busy=true;cur=null;renderScen(name);renderSteps();banner({name,company},true);
+ $("#result").innerHTML=`<div class="card empty"><h3>Looking up ${esc(name)}…</h3><p>The steps on the left fill in as it works.</p></div>`;
+ $("#bannerCard").scrollIntoView({behavior:reduced()?"auto":"smooth",block:"start"});
+ try{const r=await Backend.run(name,company,rep(),pick,setStep);busy=false;finishSteps();cur=r;banner(r);renderResult(true);seen(name);renderScen(name);
+  if(r.name==="Priya Raman")mark("priya");if(r.name==="Lena Fischer")mark("lena");if(r.name==="Tom Reyes")mark("tom");loadRb()}
+ catch(err){busy=false;drawProgress();banner({name,company,status:"Stopped"});$("#result").innerHTML=`<div class="card outcome"><div class="ic s-bad">${IC.stop}</div><div><h3>Something went wrong</h3><p>${esc(err.message)}</p></div></div>`}}
+
+/* ---------- plain-language result ---------- */
+const STRENGTH=(s,L)=>s>=L.strong_hook?"strong":s>=L.minimum_hook?"okay":"weak";
+function srcWord(f){const u=f.url||"";return /careers|jobs/.test(u)?"from their own careers page":/press|newsroom/.test(u)?"from a company press release":/podcast|youtube/.test(u)?"from an interview":"from a news article"}
+function plainExcl(w){if(!w)return"";if(w.startsWith("sensitive"))return"Bad or sensitive news. Never used in a sales email.";if(w.startsWith("personal"))return"About their personal life, not work. Never used.";
+ if(w.startsWith("sources"))return"Two sources give different numbers, so it can't be trusted.";if(w.startsWith("about "))return`It's about a different company (${w.slice(6).split(",")[0]}).`;
+ if(w.startsWith("older"))return"Too old to feel relevant.";return w}
+function plainFlag(f){if(/^Hook score/.test(f))return"The best fact was only okay, not strong. Read the opening line carefully.";
+ if(/^Weak signal/.test(f)||/^Some quality checks failed/.test(f))return null;
+ if(/date is unknown/.test(f))return"We don't know how recent the main fact is.";if(/^Role is unclear/.test(f))return"Their job title wasn't clear, so check they are the right person.";
+ return f.replace(/ Contacting many people at one company tends to lower replies\./," Emailing many people at one company usually gets fewer replies.")}
+function inShort(r){const f=first(r),kept=(r.facts||[]).length,thrown=(r.dropped||[]).length,aside=(r.signals||[]).filter(s=>s.excluded).length;
+ const plainCheck=t=>{const m=t.match(/^Number not in any verified fact: (.+)$/);
+  if(m)return`The email mentions ${m[1]}, but none of the sources say that. The AI probably made it up, so remove it before sending.`;
+  if(/^Length/.test(t))return"The email is too long or too short.";if(/^Banned phrase/.test(t))return`It uses a phrase on the banned list (${t.split(": ")[1]}).`;
+  if(/^Mentions:/.test(t))return`It mentions something on the never-mention list (${t.split(": ")[1]}).`;return t};
+ const flags=[...(r.checks||[]).filter(c=>!c.ok).map(c=>plainCheck(c.text)),...(r.flags||[]).map(plainFlag).filter(Boolean)];
+ let title,ic,cls;if(!r.hook){title="Only a general draft";ic="warn";cls="s-warn"}else if(r.status==="Ready for review"){title="Draft ready for you to check";ic="check";cls="s-ok"}else{title="Draft ready, but check a few things";ic="warn";cls="s-warn"}
+ const story=r.hook?`Found ${plural(kept+thrown,"fact")}. ${thrown?`Threw out ${thrown} it couldn't prove. `:""}${aside?`Skipped ${aside} it shouldn't use. `:""}Click a number in the email to see the source.`
+  :`Nothing recent about ${esc(f)}, so it wrote a general email instead of pretending.`;
+ return`<div class="card inshort"><div class="ic ${cls}">${IC[ic]}</div><div><h3>${title}</h3><p>${story}</p>${flags.length?`<ul>${flags.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}</div></div>`}
+const OUT_TITLE=r=>r.choices?"Which one did you mean?":r.status==="Not a buyer"?"Wrong person to email":/do-not-contact/.test(r.reason)?"Already a customer, so it stopped":
+ /based in/.test(r.reason)?"Stopped by a legal rule":/service failed|failed twice/.test(r.reason)?"A tool failed, so it stopped":/Nothing (usable )?found|Could not confirm/.test(r.reason)?"Couldn't find this person":r.status;
+function bodyHtml(body,animate){const opt=RB?.data?.compliance?.opt_out_line;let main=body||"",foot="";
+ if(opt&&main.trimEnd().endsWith(opt)){main=main.trimEnd().slice(0,-opt.length).trimEnd();foot=opt}
+ const paras=main.split(/\n{2,}/).map((p,i)=>`<p class="${animate?"in":""}" style="${animate?`animation-delay:${i*140}ms`:""}">${esc(p).replace(/\n/g,"<br>").replace(/\[(\d)\]/g,'<button class="cite" type="button" data-src="$1" aria-label="Source $1">$1</button>')}</p>`).join("");
+ return{paras,foot}}
+function whyCard(r){const L=RB?.data?.limits||{minimum_hook:.45,strong_hook:.6};const items=[];
+ (r.signals||[]).forEach(s=>{const isH=r.hook&&s.fact===r.hook.fact,isS=r.second&&s.fact===r.second.fact;
+  if(isH||isS)items.push(`<li><span class="lbl ${isH?"used":"also"}">${isH?"Opened with":"Also used"}</span><span>${esc(s.fact)}<span class="strength">${STRENGTH(s.score,L)}</span><span class="because">${esc(TOPIC_WHY[s.topic]||"Related news.")} ${s.date_unknown?"Date unknown":plural(s.days,"day")+" old"}, ${srcWord(s)}.</span></span></li>`);
+  else if(s.excluded)items.push(`<li><span class="lbl out">Not used</span><span>${esc(s.fact)}<span class="because">${esc(plainExcl(s.excluded))}</span></span></li>`);
+  else items.push(`<li><span class="lbl skip">Not used</span><span>${esc(s.fact)}<span class="because">${s.score<L.minimum_hook?"Not strong enough to open an email with.":"Fine, but less useful than the ones used."}</span></span></li>`)});
+ (r.dropped||[]).forEach(x=>items.push(`<li><span class="lbl out">Thrown out</span><span>${esc(x.fact)}<span class="because">${/hidden instructions/.test(x.reason)?"It came from a page that tried to trick the AI.":"The AI said it, but it isn't on the page it came from. Probably made up."}</span></span></li>`));
+ if(!items.length)return"";
+ return`<details class="card fold"><summary class="card-h"><h3>Why these facts?</h3><span class="muted">${plural(items.length,"fact")} · tap to open</span></summary><div class="card-b"><ul class="why">${items.join("")}</ul></div></details>`}
+function scoreCard(r){if(!r.signals||!r.signals.length)return"";const L=RB?.data?.limits||{minimum_hook:.45,strong_hook:.6};
+ return`<div class="card det"><div class="card-h"><h3>Scores behind the choice</h3><span class="eyebrow">details</span></div><div class="card-b"><div class="bars">${r.signals.map(s=>{
+  const isH=r.hook&&s.fact===r.hook.fact,isS=r.second&&s.fact===r.second.fact,cls=s.excluded?"excl":isH?"hook":isS?"support":"";
+  return`<div class="bar-row ${cls}"><div class="bar-top"><span class="t">${esc(s.fact)}${isH?'<span class="pillmini hook">Hook</span>':""}${isS?'<span class="pillmini sup">Support</span>':""}${s.excluded?`<span class="pillmini x">${esc(s.excluded)}</span>`:""}</span><span class="v num">${s.score.toFixed(2)}</span></div>
+  <div class="track"><span class="fill" style="width:${Math.min(100,s.score*100)}%"></span><span class="tick" style="left:${L.minimum_hook*100}%"></span><span class="tick" style="left:${L.strong_hook*100}%"></span></div></div>`}).join("")}</div>
+  <div class="legend"><span>Score = 0.5 × how much the topic matters + 0.3 × how recent + 0.2 × how trustworthy the source</span><span>Marks: minimum ${L.minimum_hook}, strong ${L.strong_hook}</span></div></div></div>`}
+function checksCard(r){if(!r.checks)return"";const fails=r.checks.filter(c=>!c.ok);
+ return`<div class="card"><div class="card-h"><h3>Safety checks on the draft</h3></div><div class="card-b">
+  <div class="checkline" style="color:var(${fails.length?"--bad":"--ok"})">${fails.length?IC.stop:IC.check}${fails.length?`${plural(fails.length,"check")} failed, so a person should look`:`All ${r.checks.length} checks passed`}</div>
+  ${fails.length?`<ul style="margin:8px 0 0;padding-left:18px;font-size:13.5px">${fails.map(c=>`<li>${esc(c.text)}</li>`).join("")}</ul>`:""}
+  <details class="more simple"><summary>See all checks</summary><div class="checks" style="margin-top:8px">${r.checks.map(c=>`<div class="chk ${c.ok?"":"no"}">${c.ok?IC.check:IC.stop}<span>${esc(c.text)}</span></div>`).join("")}</div></details>
+  <div class="checks det" style="margin-top:10px">${r.checks.map(c=>`<div class="chk ${c.ok?"":"no"}">${c.ok?IC.check:IC.stop}<span>${esc(c.text)}</span></div>`).join("")}</div></div></div>`}
+function renderResult(animate){const r=cur;if(!r)return;let h="";
+ if(!r.body){const m=ST[r.status]||ST["Stopped"];
+  h+=`<div class="card outcome"><div class="ic ${m.c}">${IC[m.i]}</div><div><h3>${esc(OUT_TITLE(r))}</h3><p>${esc(r.reason)}</p>
+  ${r.choices?`<div class="actions">${r.choices.map((p,i)=>`<button class="btn ghost" type="button" data-pick="${i}">${IC.user}${esc(p.title)}, ${esc(p.current_company)}</button>`).join("")}</div>`:""}
+  ${r.suggestions&&r.suggestions.length?`<div class="actions">${r.suggestions.map(s=>`<button class="btn" type="button" data-person="${esc(s.name)}">${IC.play}Look up ${esc(s.name)}, ${esc(s.title)}</button>`).join("")}</div>`:""}
+  ${/do-not-contact|based in|failed/.test(r.reason)?`<p class="faint" style="margin-top:10px">Stopping here is the right call.</p>`:""}
+  </div></div>`;h+="<!--SIDE-->"+whyCard(r)}
+ else{h+=inShort(r);const p=r.person||{},b=bodyHtml(r.body,animate);
+  h+=`<article class="card" id="mail"><dl class="mail-meta"><dt>To</dt><dd>${esc(p.name)} · ${esc(p.title)}, ${esc(p.current_company)}</dd><dt>From</dt><dd>${esc(r.rep||rep())}, Zamp</dd><dt>Subject</dt><dd class="subj">${esc(r.subject)}</dd></dl>
+   <div class="mail-body" id="mailBody">${b.paras}</div>
+   ${b.foot?`<div class="mail-foot">${esc(b.foot)}</div>`:""}
+   ${reviewBar(r)}</article><div id="learnSlot"></div>`;
+  h+="<!--SIDE-->";const src=[r.hook,r.second].filter(Boolean);
+  if(src.length)h+=`<div class="card"><div class="card-h"><h3>Where each fact came from</h3></div><div class="card-b sources">${src.map((s,i)=>
+   `<div class="src" id="src${i+1}"><span class="k">${i+1}</span><div><div class="f">${esc(s.fact)}</div><q>“<mark>${esc(s.evidence)}</mark>”</q><div class="m">${esc(s.url.replace(/^https?:\/\//,""))} · ${s.date_unknown?"date unknown":plural(s.days,"day")+" ago"}</div></div></div>`).join("")}</div></div>`;
+  h+=whyCard(r)+scoreCard(r)+checksCard(r)}
+ const [mainH,sideH]=h.split("<!--SIDE-->");
+ $("#result").innerHTML=`<div class="rmain">${mainH}</div><div class="rside">${sideH||""}</div>`;wireResult()}
+function reviewBar(r){if(!r.run_id)return"";
+ if(r.review&&r.review!=="pending"){const m={approved:["s-ok","check","You approved this draft"],edited:["s-ok","pen","You approved it with your edits"],rejected:["s-bad","stop","You rejected this draft"]}[r.review];
+  return`<div class="reviewbar"><span class="reviewed status ${m[0]}">${IC[m[1]]}${m[2]}</span></div>`}
+ return`<div class="reviewbar" id="rbar"><span class="grow muted" style="font-size:13px">Is this good enough to send?</span>
+  <button class="btn danger" type="button" data-act="reject">${IC.stop}Reject</button><button class="btn ghost" type="button" data-act="edit">${IC.pen}Edit</button><button class="btn ok" type="button" data-act="approve">${IC.check}Approve</button></div><div id="revform"></div>`}
+const reasonSel=id=>`<select id="${id}"><option value="">Just this email, nothing to learn</option>${Object.entries(INFO.reasons).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join("")}</select>`;
+function wireResult(){
+ $$("#result [data-pick]").forEach(b=>b.onclick=()=>go(cur.name,cur.company,+b.dataset.pick));
+ $$("#result [data-person]").forEach(b=>b.onclick=()=>go(b.dataset.person,cur.company));
+ $$("#result .cite").forEach(c=>{const on=v=>{const s=$("#src"+c.dataset.src);if(s)s.classList.toggle("hot",v);c.classList.toggle("hot",v)};
+  c.onmouseenter=()=>on(true);c.onmouseleave=()=>on(false);c.onfocus=()=>on(true);c.onblur=()=>on(false);c.onclick=()=>$("#src"+c.dataset.src)?.scrollIntoView({behavior:"smooth",block:"center"})});
+ const bar=$("#rbar");if(!bar)return;
+ bar.querySelector("[data-act=approve]").onclick=()=>send({action:"approved"});
+ bar.querySelector("[data-act=edit]").onclick=()=>{const b=$("#mailBody");b.innerHTML=`<label for="edBody">Your version</label><textarea id="edBody" rows="12"></textarea>`;$("#edBody").value=cur.body;
+  $("#revform").innerHTML=`<div class="revform"><div><label for="edWhy">Should it learn from your edit?</label>${reasonSel("edWhy")}</div><div><input id="edDet" placeholder="Optional detail: a word to avoid, a writing rule, or a job title"></div>
+   <div class="actions" style="margin:0"><button class="btn" type="button" id="edSave">Save my version</button><button class="btn ghost" type="button" id="edCancel">Cancel</button></div></div>`;
+  $("#edSave").onclick=()=>send({action:"edited",body:$("#edBody").value,reason:$("#edWhy").value||null,detail:$("#edDet").value});$("#edCancel").onclick=()=>renderResult(false)};
+ bar.querySelector("[data-act=reject]").onclick=()=>{$("#revform").innerHTML=`<div class="revform"><div><label for="rjWhy">What was wrong? It will suggest a rule so it doesn't happen again.</label>${reasonSel("rjWhy")}</div><div><input id="rjDet" placeholder="Optional detail: a word to avoid, a writing rule, or a job title"></div>
+   <div class="actions" style="margin:0"><button class="btn" type="button" id="rjSave" style="background:var(--bad);border-color:var(--bad)">Reject</button><button class="btn ghost" type="button" id="rjCancel">Cancel</button></div></div>`;
+  $("#rjSave").onclick=()=>send({action:"rejected",reason:$("#rjWhy").value||null,detail:$("#rjDet").value});$("#rjCancel").onclick=()=>{$("#revform").innerHTML=""}}}
+async function send(pl){try{const res=await Backend.review(cur.run_id,pl);cur.review=pl.action;if(pl.action==="edited")cur.body=pl.body;renderResult(false);
+  setStep({stage:9,state:pl.action==="rejected"?"stop":"done",log:[`${pl.action==="rejected"?"bad":"good"}|You ${pl.action} this draft`]});
+  const slot=$("#learnSlot");if(res.proposal){slot.innerHTML=propCard(res.proposal,true);wireProps(slot)}else if(res.message)slot.innerHTML=`<div class="callout">${IC.warn}<span>${esc(res.message)}</span></div>`}
+ catch(e){$("#revform").innerHTML=`<div class="callout bad" style="margin:0 18px 14px">${IC.stop}<span>${esc(e.message)}</span></div>`}}
+
+/* ---------- learning ---------- */
+function plainNote(n){const m=n.match(/^Lower '(.+)' news from (\w+) to (\w+) priority$/);if(m)return`Treat “${m[1]}” news as less important (${m[2]} → ${m[3]})`;return n}
+function propCard(p,fresh){const rp=p.replay||{},ch=rp.changed||[];
+ return`<div class="card learn"><div class="card-h"><h3>${fresh?"It suggests a new rule":"Suggested rule change"}</h3><span class="eyebrow">needs your OK</span></div><div class="card-b">
+ <div style="font-size:15px;font-weight:600">${esc(plainNote(p.note))}</div>
+ <div class="muted" style="font-size:13px">Before asking you, it tried this rule on ${plural(rp.checked??0,"person")} it already researched. ${ch.length?`It would change the result for ${ch.length}:`:"Nothing else would change."}${rp.note?" "+esc(rp.note):""}</div>
+ ${ch.length?`<div class="diff">${ch.map(c=>`<div><b>${esc(c.name)}</b><s>${esc(c.before.hook||c.before.status)}</s><span class="arrow">→</span><span>${esc(c.after.hook||c.after.status)}</span></div>`).join("")}</div>`:""}
+ <div class="actions" style="margin:0"><button class="btn" type="button" data-acc="${p.id}">Yes, add this rule</button><button class="btn ghost" type="button" data-dis="${p.id}">No thanks</button></div></div></div>`}
+function wireProps(root){root.querySelectorAll("[data-acc]").forEach(b=>b.onclick=async()=>{try{const r=await Backend.acceptProposal(b.dataset.acc);await loadRb();mark("learn");
+  b.closest(".card").outerHTML=`<div class="callout" style="background:var(--ok-soft)"><span style="color:var(--ok)">${IC.check}</span><span>Rule added (rulebook version ${r.version}). Run the same person again to see a different opening, then run the test set on the Dashboard.</span></div>`;if(!$("#tab-rules").hidden)renderRules()}
+  catch(e){b.closest(".card-b").insertAdjacentHTML("beforeend",`<div class="callout bad">${IC.stop}<span>${esc(e.message)}</span></div>`)}});
+ root.querySelectorAll("[data-dis]").forEach(b=>b.onclick=async()=>{await Backend.dismissProposal(b.dataset.dis);b.closest(".card").outerHTML=`<p class="muted" style="font-size:13px;margin:0">Okay, the rules stay as they were.</p>`})}
+
+/* ---------- dashboard ---------- */
+async function renderDash(){const runs=await Backend.runs(),n=runs.length,pct=(a,b)=>b?Math.round(100*a/b)+"%":"–";
+ const by=k=>runs.filter(r=>(ST[r.status]||{}).k===k).length,reviewed=runs.filter(r=>r.review!=="pending"),ok=reviewed.filter(r=>r.review!=="rejected");
+ const avgS=n?runs.reduce((s,r)=>s+(r.duration||0),0)/n:null;
+ $("#kpis").innerHTML=[[n,"People researched"],[pct(by("ready"),n),"Drafts ready straight away"],[pct(by("flags")+by("attn")+by("nb"),n),"Needed a person to look"],[pct(ok.length,reviewed.length),`Approved by you (of ${reviewed.length})`],
+  [avgS==null?"–":avgS.toFixed(1)+"s","Time per person"]].map(k=>`<div class="card kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join("");
+ const parts=[["ready","Ready","c-ready"],["flags","Ready, with notes","c-flags"],["attn","Needs a person","c-attn"],["nb","Wrong person","c-nb"],["stop","Stopped on purpose","c-stop"]];
+ $("#stackN").textContent=n?plural(n,"person"):"";
+ $("#stack").innerHTML=n?parts.map(([k,,c])=>`<span class="${c}" style="width:${100*by(k)/n}%"></span>`).join(""):"";
+ $("#stackKey").innerHTML=n?parts.map(([k,l,c])=>`<span><i class="${c}"></i>${l} <b class="num">${by(k)}</b></span>`).join(""):`<span>Try a few people on the Run tab to fill this in.</span>`;
+ const vs={};runs.forEach(r=>{const v=vs[r.version]||(vs[r.version]={v:r.version,rev:0,ok:0,runs:0});v.runs++;if(r.review!=="pending")v.rev++;if(r.review==="approved"||r.review==="edited")v.ok++});
+ const list=Object.values(vs).sort((a,b)=>a.v-b.v);
+ $("#vbars").innerHTML=list.length?list.map(v=>`<div class="vrow"><b class="mono">v${v.v}</b><div class="track"><span class="fill" style="width:${v.rev?100*v.ok/v.rev:0}%"></span></div><span class="muted num">${v.rev?`${v.ok} of ${v.rev} approved`:`none reviewed yet`}</span></div>`).join("")
+  :`<p class="muted" style="margin:0;font-size:13px">Every rule change makes a new version. If later versions get approved more often, the rules are getting better.</p>`;
+ $("#hist").innerHTML=runs.map((r,i)=>`<tr data-i="${i}"><td class="n">${ago(r.ts)}</td><td><b>${esc(r.name)}</b><div class="muted" style="font-size:12px">${esc(r.company)}</div></td><td>${status(r.status,false)}</td>
+  <td>${r.review==="pending"?'<span class="faint">not yet</span>':`<span class="small-status ${r.review==="rejected"?"s-bad":"s-ok"}">${esc(r.review)}</span>`}</td>
+  <td>${esc(r.result.hook?.topic||"–")}</td><td class="n">v${r.version}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">Nobody researched yet.</td></tr>`;
+ $$("#hist tr[data-i]").forEach(tr=>tr.onclick=()=>{const r=runs[+tr.dataset.i];tab("run");cur=r.result;banner(cur);renderSteps();
+  const note=`<li class="tl-note">Opened from history, so the live steps aren't shown. <button class="btn ghost rerun" type="button" style="margin-top:8px">${IC.play}Run ${esc(r.name)} again</button></li>`;
+  $("#phases").innerHTML=note;$("#timeline").innerHTML=note;$$(".rerun").forEach(b=>b.onclick=()=>go(r.name,r.company));$("#phasebar").innerHTML=`<div class="histnote">Opened from history. <button class="textbtn rerun" type="button">Run ${esc(r.name)} again</button></div>`;$$(".rerun").forEach(b=>b.onclick=()=>go(r.name,r.company));$("#plabel").textContent="";$("#progress").innerHTML="";renderResult(false)});
+ if(evalDone)showEval(evalDone)}
+function showEval(r){$("#evalScore").innerHTML=`<span style="color:var(${r.passed===r.total?"--ok":"--bad"})">${r.passed}/${r.total}</span>`;
+ const failed=r.rows.filter(x=>!x.passed);
+ $("#evalGrid").innerHTML=(failed.length?`<div class="callout" style="grid-column:1/-1">${IC.warn}<span>${plural(failed.length,"case")} changed. If you just added a rule, check the change is what you wanted, then update the expected result.</span></div>`:"")
+  +r.rows.map(x=>`<div class="ev ${x.passed?"":"no"}">${x.passed?IC.check:IC.stop}<span><b>${esc(x.case)}</b><small>${esc(x.status)}${x.hook?" · "+esc(x.hook):""}</small>${x.problems.length?`<small style="color:var(--bad)">${esc(x.problems.join("; "))}</small>`:""}</span></div>`).join("")}
+$("#evalBtn").onclick=async()=>{const b=$("#evalBtn");b.disabled=true;b.innerHTML='<span class="spin"></span>Running…';
+ try{evalDone=await Backend.evalAll();showEval(evalDone);mark("eval")}catch(e){$("#evalGrid").innerHTML=`<div class="callout bad">${IC.stop}<span>${esc(e.message)}</span></div>`}
+ b.disabled=false;b.textContent="Run test set again"};
+
+/* ---------- rulebook ---------- */
+async function renderRules(){await loadRb();const d=RB.data||{},c=d.compliance||{},L=d.limits||{};$("#rbVer").textContent="version "+RB.version;
+ const LBL={strong_hook:"Score for a strong opening fact",minimum_hook:"Lowest score it will still use",max_age_days:"Ignore news older than (days)",unknown_date_days:"Undated news counts as (days old)",max_words:"Longest email (words)",company_cooldown_days:"Warn if same company emailed within (days)"};
+ $("#rbGlance").innerHTML=`
+ <div class="card"><div class="card-h"><h3>What we sell</h3></div><div class="card-b" style="font-size:13.5px">${esc(d.what_we_sell)}</div></div>
+ <div class="card"><div class="card-h"><h3>Which news matters most</h3></div><div class="card-b">${Object.entries(d.topics||{}).map(([k,t])=>`<div class="topic"><b>${esc(k)}</b><span class="prio ${esc(t.priority)}">${esc(t.priority)}</span><span class="lk muted">${esc(t.link||"")}</span></div>`).join("")}</div></div>
+ <div class="card"><div class="card-h"><h3>Never mention</h3></div><div class="card-b"><div class="tagcloud bad">${(d.never_mention||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div></div></div>
+ <div class="card"><div class="card-h"><h3>Who to email</h3></div><div class="card-b" style="display:grid;gap:10px"><div class="tagcloud">${(d.buyer_titles||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div><div class="muted" style="font-size:12px">Not these</div><div class="tagcloud">${(d.not_buyer_titles||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div></div></div>
+ <div class="card"><div class="card-h"><h3>Legal and privacy</h3></div><div class="card-b" style="display:grid;gap:8px;font-size:13px"><div><span class="muted">Line at the end of every email</span><br>“${esc(c.opt_out_line||"none")}”</div>
+  <div><span class="muted">Never email people in</span> ${(c.blocked_countries||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join(" ")||"no blocked countries"}</div><div><span class="muted">Only use work facts</span> ${c.work_facts_only===false?"no":"yes"}</div></div></div>
+ <div class="card"><div class="card-h"><h3>Limits</h3></div><div class="card-b kv">${Object.entries(L).map(([k,v])=>`<span>${esc(LBL[k]||k)}</span><b>${esc(v)}</b>`).join("")}</div></div>`;
+ $("#yaml").value=RB.yaml;$("#rbMsg").textContent="";
+ $("#vers").innerHTML=RB.versions.map(v=>`<li><span class="v">v${v.version}</span><span>${esc(plainNote(v.note.replace(/^Learned: /,"Learned: ")))}<br><span class="faint">${ago(v.ts)}</span></span></li>`).join("");
+ const props=await Backend.proposals();$("#props").innerHTML=props.length?props.map(p=>propCard(p)).join(""):
+  `<div class="card"><div class="card-h"><h3>Suggested rule changes</h3></div><div class="card-b muted" style="font-size:13px">None right now. When you reject or edit a draft and say why, it suggests a rule here.</div></div>`;
+ wireProps($("#props"))}
+$("#saveRb").onclick=async()=>{try{const r=await Backend.saveRulebook($("#yaml").value,$("#ynote").value);$("#ynote").value="";await renderRules();$("#rbMsg").innerHTML=`<span style="color:var(--ok)">Saved as version ${r.version}.</span>`}
+ catch(e){$("#rbMsg").innerHTML=`<span style="color:var(--bad)">${esc(e.message)}</span>`}};
+
+/* ---------- how it works ---------- */
+function renderHow(){$("#safety").innerHTML=SAFETY.map(([a,b])=>`<div><b>${esc(a)}</b><span class="muted">${esc(b)}</span></div>`).join("")}
+
+/* ---------- reset ---------- */
+let armed=false;$("#resetBtn").onclick=async()=>{const b=$("#resetBtn");if(!armed){armed=true;b.textContent="Click again to clear everything";setTimeout(()=>{armed=false;b.textContent="Reset"},3500);return}
+ armed=false;b.textContent="Reset";await Backend.reset();tour=new Set();saveTour();try{sessionStorage.removeItem("od-seen")}catch(e){}evalDone=null;cur=null;
+ await loadRb();renderTour();renderScen();renderSteps();banner(null);idle();$("#evalGrid").innerHTML="";$("#evalScore").textContent="";tab("run")};
+
+function idle(){$("#result").innerHTML=`<div class="howanim" aria-label="How it works">
+ <div class="hb" style="--i:0"><span class="hn">1</span><div class="vis v-search" aria-hidden="true"><i></i><i></i><i></i><u></u></div><b>Looks them up</b><p>News, hiring and company pages.</p></div>
+ <div class="hb" style="--i:1"><span class="hn">2</span><div class="vis v-check" aria-hidden="true"><i></i><i></i><i class="x"></i></div><b>Checks the facts</b><p>Keeps only what it can prove.</p></div>
+ <div class="hb" style="--i:2"><span class="hn">3</span><div class="vis v-write" aria-hidden="true"><i></i><i></i><i></i><i></i></div><b>Writes the email</b><p>Short, and only from proven facts.</p></div>
+ <div class="hb" style="--i:3"><span class="hn">4</span><div class="vis v-you" aria-hidden="true"><span>Approve</span></div><b>You decide</b><p>Nothing goes out without you.</p></div>
+</div><p class="howhint">Pick someone above to watch it for real.</p>`}
+
+(async()=>{INFO=await Backend.info();await loadRb();header();renderTour();renderScen();renderSteps();banner(null);idle();renderHow();
+ if(!INFO.can_reset)$("#resetBtn").hidden=true})();
+})();
+</script>
+</body>
+</html>

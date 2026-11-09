@@ -1,0 +1,91 @@
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>
+      <div><h1>Outreach Drafter</h1><p>An AI employee that researches a prospect and drafts outreach for Zamp's sales team</p></div></div>
+    <div class="chips"><span class="chip" id="modeChip"><span class="dot"></span><span></span></span><span class="chip" id="verChip"></span>
+      <button class="textbtn" id="resetBtn" type="button">Reset</button></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
+    <button role="tab" aria-selected="false" data-tab="dash" type="button">Dashboard</button>
+    <button role="tab" aria-selected="false" data-tab="rules" type="button">Rulebook</button>
+    <button role="tab" aria-selected="false" data-tab="how" type="button">How it works</button>
+  </nav>
+
+  <section id="tab-run" class="section">
+    <div class="card intro">
+      <div><h2>What this does</h2>
+        <p>You give it a person's name and company. Like a new sales hire, it looks them up online, keeps only facts it can prove,
+        and writes a short first email. Then it stops and waits for you. Nothing is ever sent on its own.</p></div>
+      <div class="intro-try"><span class="eyebrow">Try in this order</span><ol id="tour"></ol></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="scen-h"><h2>Pick someone to research</h2><span class="muted" style="font-size:12.5px">All people and companies here are made up for the demo.</span></div>
+      <div class="scen" id="scen"></div>
+      <form class="card custom-form" id="custom" hidden>
+        <div><label for="fName">Person</label><input id="fName" autocomplete="off" placeholder="e.g. Priya Raman"></div>
+        <div><label for="fCo">Company</label><input id="fCo" autocomplete="off" placeholder="e.g. Lumen Freight"></div>
+        <div><label for="fRep">Your name (signs the email)</label><input id="fRep" autocomplete="off" value="Mahima"></div>
+        <button class="btn" type="submit" id="fGo">Run</button>
+      </form>
+    </div>
+    <div class="card" id="bannerCard"><div class="banner" id="banner"></div>
+      <div class="phasebar simple" id="phasebar"></div>
+      <div class="progress det" id="progress"></div><div class="plabel det" id="plabel"></div></div>
+    <div class="detrow"><label class="switch"><input type="checkbox" id="detailsToggle"><span class="knob" aria-hidden="true"></span>
+      <span><b>Show how it decided</b> <span class="muted">all 10 steps, scores and checks</span></span></label></div>
+    <div class="work">
+      <div class="card"><div class="card-h"><h3 class="simple">What it did</h3><h3 class="det">All 10 steps</h3></div>
+        <ol class="phases simple" id="phases"></ol><ol class="timeline det" id="timeline"></ol></div>
+      <div class="result" id="result"></div>
+    </div>
+  </section>
+
+  <section id="tab-dash" hidden class="section">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>Where prospects end up</h3><span class="eyebrow" id="stackN"></span></div><div class="card-b"><div class="stack" id="stack"></div><div class="key" id="stackKey"></div></div></div>
+        <div class="card"><div class="card-h"><h3>Run history</h3><span class="muted" style="font-size:12px">Click a row to open it</span></div>
+          <div class="card-b scroll"><table><thead><tr><th>When</th><th>Prospect</th><th>Outcome</th><th>Your review</th><th>Hook</th><th>Cost</th><th>Rules</th></tr></thead><tbody id="hist"></tbody></table></div></div>
+      </div>
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>Approval rate by rulebook version</h3></div><div class="card-b"><div class="vbars" id="vbars"></div></div></div>
+        <div class="card"><div class="card-h"><h3>Test set</h3><span class="score num" id="evalScore"></span></div>
+          <div class="card-b"><p class="muted" style="margin:0 0 10px;font-size:13px">Runs every prepared case and checks the outcome, the hook and words that must never appear. Run it after every rule change.</p>
+          <button class="btn" id="evalBtn" type="button">Run test set</button><div class="evalgrid" id="evalGrid"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-rules" hidden class="section">
+    <div class="grid2">
+      <div class="col">
+        <div class="card"><div class="card-h"><h3>The rulebook, at a glance</h3><span class="eyebrow" id="rbVer"></span></div>
+          <div class="card-b"><p class="muted" style="margin:0;font-size:13px">Plain-English rules every run follows. Sales leaders edit these, not engineers. The agent proposes changes when you reject a draft.</p></div></div>
+        <div class="rb" id="rbGlance"></div>
+        <details class="card editor"><summary>Edit the rulebook as text</summary>
+          <div class="card-b" style="display:grid;gap:10px;padding-top:0">
+            <textarea id="yaml" spellcheck="false"></textarea>
+            <div><label for="ynote">What did you change?</label><input id="ynote" placeholder="e.g. Raise funding news to high"></div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="saveRb" type="button">Save as new version</button><span id="rbMsg" style="font-size:13px"></span></div>
+          </div></details>
+      </div>
+      <div class="col">
+        <div id="props"></div>
+        <div class="card"><div class="card-h"><h3>Version history</h3></div><div class="card-b"><ul class="versions" id="vers"></ul></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-how" hidden class="section">
+    <div class="principle">
+      <div class="card"><span class="eyebrow">AI</span><b>Reads and writes</b><p>Pulls facts out of web pages and writes the email. Nothing else.</p></div>
+      <div class="card"><span class="eyebrow">Code + rulebook</span><b>Makes every decision</b><p>Who the person is, which fact to use, whether it is safe. Every decision can be explained and replayed.</p></div>
+      <div class="card"><span class="eyebrow">You</span><b>Approve and teach</b><p>Nothing is sent without you. A rejection with a reason becomes a tested rule change.</p></div>
+    </div>
+    <div class="flow" id="flow"></div>
+    <div class="card"><div class="card-h"><h3>Safety built in</h3></div><div class="card-b safety" id="safety"></div></div>
+  </section>
+</div>
