@@ -1,63 +1,48 @@
-# Agent Operating Procedure (rulebook) for the outreach drafter.
-# Plain English. The rep can edit this in the app; the code reads it on every run.
+# A general-purpose rulebook: write a first email to anyone, about anything you offer.
+# In the app: Rulebook tab -> "Edit the rulebook as text" -> paste this in -> change the
+# two lines marked CHANGE ME -> Save as new version.
 
-seller: Zamp
+seller: CHANGE ME (your name or company)
 what_we_sell: >-
-  AI employees that run finance back-office work end to end, such as invoice
-  processing, chargebacks and vendor onboarding, and only ask a person when unsure.
+  CHANGE ME. One or two plain sentences on what you offer or why you are writing.
 
-# Who buys from us, and who doesn't (matched against the person's job title)
-buyer_titles: [cfo, chief financial, vp finance, head of finance, finance director, controller, ap manager, accounts payable, finance manager, treasurer]
-not_buyer_titles: [engineer, developer, designer, marketing, recruiter, sales]
+# "anyone" = no job-title check. Use "titles" (and fill buyer_titles) to limit it again.
+who_to_email: anyone
+buyer_titles: []
+not_buyer_titles: []
 
-# Never research or contact these companies
-do_not_contact:
-  - company: Acme Robotics
-    reason: existing customer
+do_not_contact: []
 
-# How much each kind of news matters to us (high / medium / low),
-# and the sentence that links it to what we sell
+# How much each kind of news matters (high / medium / low) and the sentence that links it to you
 topics:
-  hiring-ap:   {priority: high,   link: "Adding AP headcount is often a sign invoice volume is outgrowing the process."}
-  pain-close:  {priority: high,   link: "Long closes usually come from manual invoice matching and chasing exceptions."}
-  chargebacks: {priority: high,   link: "Dispute queues are hard to staff for when volume suddenly jumps."}
-  erp:         {priority: medium, link: "A system move is a good moment to fix how invoices get matched and approved."}
-  new-role:    {priority: medium, link: "The first months in a finance seat are usually when people look hard at how AP runs."}
-  funding:     {priority: medium, link: "Growth after a raise usually means more vendors and more invoices."}
-  expansion:   {priority: low,    link: "New sites usually bring new vendors and more invoices to process."}
-  award:       {priority: low,    link: "Growth like that tends to mean more vendors to pay."}
+  new-role:  {priority: high,   link: "A new role is a natural moment to talk about what comes next."}
+  launch:    {priority: high,   link: "A launch is a busy time, and that is often when extra help matters."}
+  funding:   {priority: medium, link: "Growth after new funding usually opens up new priorities."}
+  hiring:    {priority: medium, link: "Hiring usually means the team is growing and needs are changing."}
+  talk:      {priority: medium, link: "You spoke about this publicly, so it is clearly something you care about."}
+  expansion: {priority: low,    link: "Expanding usually brings new questions."}
+  award:     {priority: low,    link: "Congratulations on that. It says a lot about the team."}
 
-# Never use these as a hook or mention them in a draft
 never_mention: [layoff, laid off, lawsuit, sued, death, died, illness, bankruptcy, investigation, scandal]
 
-# What each role cares about (matched against the job title)
 angles:
-  cfo: cost and how fast the books close
-  controller: accuracy and a clean audit trail
-  vp finance: scaling finance without adding headcount
-  head of finance: scaling finance without adding headcount
-  ap manager: less manual matching and fewer exceptions
-  default: less manual work in AP
+  default: what matters most in their role
 
 limits:
-  strong_hook: 0.60      # a hook this good needs no extra review
-  minimum_hook: 0.45     # below this, no fact is used at all
-  max_age_days: 180      # older news is ignored
-  unknown_date_days: 90  # a fact with no date counts as this old
+  strong_hook: 0.60
+  minimum_hook: 0.45
+  max_age_days: 180
+  unknown_date_days: 90
   max_words: 130
-  company_cooldown_days: 14   # warn if someone else at the same company got a draft this recently
+  company_cooldown_days: 14
 
-# Legal and privacy basics for cold email
-# The footer offers a way out; it asks for nothing. Silence is a fine answer.
-# The sending tool (Gmail, Outreach...) adds the unsubscribe link and postal address.
 compliance:
   opt_out_line: "If you'd rather I didn't follow up, just let me know."
-  blocked_countries: [canada]   # CASL generally needs express consent before commercial email
-  work_facts_only: true         # never use family, health, hobbies or other personal-life facts
+  blocked_countries: [canada]
+  work_facts_only: true
 
 writing_rules:
-  - Open with the fact, then link it to what we sell in one sentence.
+  - Open with the fact, then link it to what we offer in one sentence.
   - One clear ask, a 15-minute call. No meeting times or calendar links.
-  - Plain, human tone. No flattery and no buzzwords.
-
-banned_phrases: [hope this finds you, quick question, synergy, just checking in, circle back, game-changing, revolutionary]
+  - Plain words. No flattery and no hype.
+banned_phrases: [game-changer, revolutionary, synergy, "I hope this email finds you well", "circle back"]
