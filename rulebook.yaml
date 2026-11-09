@@ -1,10 +1,11 @@
-# Zamp rulebook that writes to anyone (not only finance roles).
+# Zamp rulebook (broad): Zamp sells digital employees for many functions, not only finance.
 # Rulebook tab -> "Edit the rulebook as text" -> delete everything -> paste this -> Save as new version.
 
 seller: Zamp
 what_we_sell: >-
-  AI employees that run finance back-office work end to end, such as invoice
-  processing, chargebacks and vendor onboarding, and only ask a person when unsure.
+  AI digital employees that run business processes end to end, such as invoice
+  processing, accounting close, vendor onboarding, chargebacks, purchase approvals
+  and customer operations, and only ask a person when unsure.
 
 # "anyone" = no job-title check. Change to "titles" to go back to finance roles only.
 who_to_email: anyone
@@ -17,15 +18,15 @@ do_not_contact:
 
 # How much each kind of news matters (high / medium / low), and the sentence that links it to Zamp
 topics:
-  hiring-ap:   {priority: high,   link: "Adding AP headcount is often a sign invoice volume is outgrowing the process."}
-  pain-close:  {priority: high,   link: "Long closes usually come from manual invoice matching and chasing exceptions."}
-  chargebacks: {priority: high,   link: "Dispute queues are hard to staff for when volume suddenly jumps."}
+  hiring-ap:   {priority: high,   link: "Hiring for a process team is often a sign the work is outgrowing how it is done today."}
+  pain-close:  {priority: high,   link: "Slow, manual processes usually come from matching records by hand and chasing exceptions."}
+  chargebacks: {priority: high,   link: "Dispute and exception queues are hard to staff for when volume suddenly jumps."}
   new-role:    {priority: medium, link: "The first months in a new seat are usually when people look hard at how the team's work runs."}
-  funding:     {priority: medium, link: "Growth after a raise usually means more vendors, more invoices and more back-office work."}
-  erp:         {priority: medium, link: "A system move is a good moment to fix how invoices get matched and approved."}
-  launch:      {priority: medium, link: "A launch usually brings more customers and more back-office work behind the scenes."}
-  expansion:   {priority: low,    link: "New sites usually bring new vendors and more invoices to process."}
-  award:       {priority: low,    link: "Growth like that tends to mean more vendors to pay."}
+  funding:     {priority: medium, link: "Growth after a raise usually means more vendors, more transactions and more operations work."}
+  erp:         {priority: medium, link: "A system move is a good moment to fix how routine work gets processed and approved."}
+  launch:      {priority: medium, link: "A launch usually brings more customers and more operations work behind the scenes."}
+  expansion:   {priority: low,    link: "New sites usually bring new vendors, suppliers and more processes to run."}
+  award:       {priority: low,    link: "Growth like that tends to mean more operations work behind the scenes."}
 
 # Never use these as a hook or mention them in a draft
 never_mention: [layoff, laid off, lawsuit, sued, death, died, illness, bankruptcy, investigation, scandal, mental health, burnout, depression, anxiety, divorce, cancer, diagnosis, harassment, discrimination]
@@ -36,7 +37,7 @@ angles:
   vp finance: scaling finance without adding headcount
   head of finance: scaling finance without adding headcount
   ap manager: less manual matching and fewer exceptions
-  default: less manual work in the back office
+  default: less manual work in day-to-day operations
 
 limits:
   strong_hook: 0.60
