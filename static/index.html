@@ -325,7 +325,11 @@ td.n{font-family:var(--mono);font-size:12px;white-space:nowrap}
 .score{font:650 22px var(--sans);letter-spacing:-.02em}
 
 /* rulebook */
-.rb{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.rb{display:contents}
+#tab-rules .grid2>.col:first-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;grid-auto-flow:row dense}
+#tab-rules .grid2>.col:first-child .card:not(.tcard),#tab-rules .grid2>.col:first-child details.editor{grid-column:1}
+#tab-rules .grid2>.col:first-child .tcard{grid-column:2;grid-row:1 / span 8;align-self:start}
+@media(max-width:700px){#tab-rules .grid2>.col:first-child{grid-template-columns:1fr}#tab-rules .grid2>.col:first-child .card,#tab-rules .grid2>.col:first-child details.editor,#tab-rules .grid2>.col:first-child .tcard{grid-column:1 !important;grid-row:auto !important}}
 .topic{display:grid;grid-template-columns:110px 70px 1fr;gap:10px;align-items:baseline;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
 .topic:last-child{border:0}
 @media(max-width:520px){.topic{grid-template-columns:1fr auto}.topic .lk{grid-column:1/-1}}
@@ -539,8 +543,6 @@ details.fold summary .muted{font-style:italic;font-size:15px}
   <section id="tab-rules" hidden class="section">
     <div class="grid2">
       <div class="col">
-        <div class="card"><div class="card-h"><h3>The rulebook, at a glance</h3><span class="eyebrow" id="rbVer"></span></div>
-          <div class="card-b"><p class="muted" style="margin:0;font-size:13px">The plain rules it follows. Anyone on the sales team can change them.</p></div></div>
         <div class="rb" id="rbGlance"></div>
         <details class="card editor"><summary>Edit the rulebook as text</summary>
           <div class="card-b" style="display:grid;gap:10px;padding-top:0">
@@ -882,15 +884,14 @@ $("#evalBtn").onclick=async()=>{const b=$("#evalBtn");b.disabled=true;b.innerHTM
  b.disabled=false;b.textContent="Run test set again"};
 
 /* ---------- rulebook ---------- */
-async function renderRules(){await loadRb();const d=RB.data||{},c=d.compliance||{},L=d.limits||{};$("#rbVer").textContent="version "+RB.version;
+async function renderRules(){await loadRb();const d=RB.data||{},c=d.compliance||{},L=d.limits||{};
  const LBL={strong_hook:"Score for a strong opening fact",minimum_hook:"Lowest score it will still use",max_age_days:"Ignore news older than (days)",unknown_date_days:"Undated news counts as (days old)",max_words:"Longest email (words)",company_cooldown_days:"Warn if same company emailed within (days)"};
  $("#rbGlance").innerHTML=`
  <div class="card"><div class="card-h"><h3>What we sell</h3></div><div class="card-b" style="font-size:13.5px">${esc(d.what_we_sell)}</div></div>
- <div class="card"><div class="card-h"><h3>Which news matters most</h3></div><div class="card-b">${Object.entries(d.topics||{}).map(([k,t])=>`<div class="topic"><b>${esc(k)}</b><span class="prio ${esc(t.priority)}">${esc(t.priority)}</span><span class="lk muted">${esc(t.link||"")}</span></div>`).join("")}</div></div>
+ <div class="card tcard"><div class="card-h"><h3>Which news matters most</h3></div><div class="card-b">${Object.entries(d.topics||{}).map(([k,t])=>`<div class="topic"><b>${esc(k)}</b><span class="prio ${esc(t.priority)}">${esc(t.priority)}</span><span class="lk muted">${esc(t.link||"")}</span></div>`).join("")}</div></div>
  <div class="card"><div class="card-h"><h3>Never mention</h3></div><div class="card-b"><div class="tagcloud bad">${(d.never_mention||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div></div></div>
- <div class="card"><div class="card-h"><h3>Who to email</h3></div><div class="card-b" style="display:grid;gap:10px"><div class="tagcloud">${(d.buyer_titles||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div><div class="muted" style="font-size:12px">Not these</div><div class="tagcloud">${(d.not_buyer_titles||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div></div></div>
- <div class="card"><div class="card-h"><h3>Legal and privacy</h3></div><div class="card-b" style="display:grid;gap:8px;font-size:13px"><div><span class="muted">Line at the end of every email</span><br>“${esc(c.opt_out_line||"none")}”</div>
-  <div><span class="muted">Never email people in</span> ${(c.blocked_countries||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join(" ")||"no blocked countries"}</div><div><span class="muted">Only use work facts</span> ${c.work_facts_only===false?"no":"yes"}</div></div></div>
+ <div class="card"><div class="card-h"><h3>Who to email</h3></div><div class="card-b" style="display:grid;gap:10px"><div class="tagcloud">${(d.buyer_titles||[]).map(w=>`<span>${esc(w)}</span>`).join("")}</div></div></div>
+ <div class="card"><div class="card-h"><h3>Blocked countries</h3></div><div class="card-b" style="display:grid;gap:8px;font-size:13px"><div>${(c.blocked_countries||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join(" ")||"none"}</div><div class="muted" style="font-size:12px">Cold email there needs the person's permission first, so no draft is written.</div></div></div>
  <div class="card"><div class="card-h"><h3>Limits</h3></div><div class="card-b kv">${Object.entries(L).map(([k,v])=>`<span>${esc(LBL[k]||k)}</span><b>${esc(v)}</b>`).join("")}</div></div>`;
  $("#yaml").value=RB.yaml;$("#rbMsg").textContent="";
  $("#vers").innerHTML=RB.versions.map(v=>`<li><span class="v">v${v.version}</span><span>${esc(plainNote(v.note.replace(/^Learned: /,"Learned: ")))}<br><span class="faint">${ago(v.ts)}</span></span></li>`).join("");
