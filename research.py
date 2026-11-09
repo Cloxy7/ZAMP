@@ -90,7 +90,7 @@ def parallel_search(queries, meter):
 
 
 # ---- LLM -------------------------------------------------------------------
-def llm(prompt, model, key, meter, max_tokens=8000):
+def llm(prompt, model, key, meter, max_tokens=8000, check=None):
     def call():
         import anthropic
         client = anthropic.Anthropic()
@@ -108,6 +108,8 @@ def llm(prompt, model, key, meter, max_tokens=8000):
         if not text:
             kinds = ",".join(getattr(b, "type", "?") for b in msg.content) or "nothing"
             raise ServiceError(f"The model returned no text (model {model}, stopped because: {msg.stop_reason}, got: {kinds}).")
+        if check:
+            check(text)   # a bad reply must raise here, so it is retried and never saved in the cache
         return {"text": text, "in": msg.usage.input_tokens, "out": msg.usage.output_tokens}
 
     value, hit = cached("llm", f"{model}|{key}|{prompt}", lambda: with_retry(call), meter)
@@ -119,7 +121,7 @@ def llm(prompt, model, key, meter, max_tokens=8000):
 def parse_json(text):
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
-        raise ServiceError("The model did not return JSON.")
+        raise ServiceError("The model did not return JSON. It said: " + " ".join(text.split())[:160])
     try:
         return json.loads(m.group(0))
     except json.JSONDecodeError as e:
@@ -167,6 +169,7 @@ Rules:
 - Use no numbers, names or claims other than the ones given above.
 - Never use these phrases: {banned}
 - Never mention: {never}
+Always answer, even if the fact is only a loose fit. Never ask questions or explain. Reply with the JSON object and nothing else.
 Return JSON only: {{"subject": "under 60 characters, sentence case", "body": "...",
 "personalisation": "one sentence: which fact you used, so a reviewer can check it"}}"""
 
@@ -175,7 +178,7 @@ def extract(name, company, pages, rb, meter):
     blob = "\n\n".join(f'<page url="{p["url"]}" date="{p.get("published_date")}">\n{p["title"]}\n'
                        f'{(p["content"] or "").replace("</page>", "")}\n</page>' for p in pages)
     prompt = EXTRACT_PROMPT.format(name=name, company=company, pages=blob, topics=list(rb["topics"]))
-    return parse_json(llm(prompt, MODEL_CHEAP, "extract", meter, max_tokens=2500))
+    return parse_json(llm(prompt, MODEL_CHEAP, "extract", meter, max_tokens=6000, check=parse_json))
 
 
 def draft(ctx, rb, meter):
@@ -191,4 +194,4 @@ def draft(ctx, rb, meter):
         what_we_sell=rb["what_we_sell"], angle=ctx["angle"], fact_part=fact_part,
         rules="\n".join(f"- {r}" for r in rb["writing_rules"]), max_words=rb["limits"]["max_words"],
         banned=", ".join(rb.get("banned_phrases", [])), never=", ".join(rb.get("never_mention", [])))
-    return parse_json(llm(prompt, MODEL_SMART, "draft", meter, max_tokens=800))
+    return parse_json(llm(prompt, MODEL_SMART, "draft", meter, max_tokens=4000, check=parse_json))
