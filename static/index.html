@@ -799,7 +799,7 @@ function checksCard(r){if(!r.checks)return"";const fails=r.checks.filter(c=>!c.o
 function renderResult(animate){const r=cur;if(!r)return;let h="";
  if(!r.body){const m=ST[r.status]||ST["Stopped"];
   h+=`<div class="card outcome"><div class="ic ${m.c}">${IC[m.i]}</div><div><h3>${esc(OUT_TITLE(r))}</h3><p>${esc(r.reason)}</p>
-  ${r.choices?`<div class="actions">${r.choices.map((p,i)=>`<button class="btn ghost" type="button" data-pick="${i}">${IC.user}${esc(p.title)}, ${esc(p.current_company)}${p.company_match===true?`<span class="mtag yes">same company</span>`:p.company_match===false?`<span class="mtag">other company</span>`:""}</button>`).join("")}</div>`:""}
+  ${r.choices?`<div class="actions">${r.choices.map((p,i)=>`<button class="btn ghost" type="button" data-pick="${i}">${IC.user}${esc(p.title||"Role not known")}${p.current_company?", "+esc(p.current_company):(p.previous_company?`, formerly at ${esc(p.previous_company)}`:", company not known")}${p.company_match===true?`<span class="mtag yes">same company</span>`:p.company_match===false?`<span class="mtag">other company</span>`:""}</button>`).join("")}</div>`:""}
   ${r.suggestions&&r.suggestions.length?`<div class="actions">${r.suggestions.map(s=>`<button class="btn" type="button" data-person="${esc(s.name)}">${IC.play}Look up ${esc(s.name)}, ${esc(s.title)}</button>`).join("")}</div>`:""}
   ${/do-not-contact|based in|failed/.test(r.reason)?`<p class="faint" style="margin-top:10px">Stopping here is the right call.</p>`:""}
   </div></div>`;h+="<!--SIDE-->"+whyCard(r)}
