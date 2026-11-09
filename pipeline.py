@@ -8,6 +8,7 @@ import re, time
 from datetime import date, datetime
 
 import mock_data, research, rules
+import people as people_mod
 
 STAGES = [
     ("Check input", "Valid request, not on the do-not-contact list"),
@@ -306,7 +307,9 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
         yield ev(2, "stop", f"bad|Extraction failed: {e}")
         yield end(STOPPED, "The AI service failed while reading the pages, so nothing was guessed.")
         return
-    raw = data.get("facts", [])
+    if not isinstance(data, dict):
+        data = {}
+    raw = people_mod.clean_facts(data.get("facts"))
     facts, dropped, conflicts = verify(raw, pages, rb, {p["url"] for p in blocked})
     log = [f"|{len(raw)} facts extracted, {len(facts)} verified on their page"]
     log += [f"mid|Dropped: {x['fact']} ({x['reason']})" for x in dropped]
@@ -315,52 +318,20 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
 
     # 4. Identify person
     yield ev(3, "run")
-    people = data.get("people", [])
-    # The same person often shows up twice (two pages, slightly different title). Same name at the
-    # same company counts as one person, so we only ask "which one?" when the choices really differ.
-    merged, idx_map = [], {}
-    for i, p in enumerate(people):
-        def same_title(a, b):
-            a, b = norm_text(a), norm_text(b)
-            return not a or not b or a in b or b in a
-        twin = next((m for m in merged if (m.get("name") or "").strip().lower() == (p.get("name") or "").strip().lower()
-                     and same_company(m.get("current_company") or "", p.get("current_company") or "")
-                     and same_title(m.get("title"), p.get("title"))), None)
-        if twin is None:
-            merged.append(p)
-            idx_map[i] = p
-        else:
-            idx_map[i] = twin
-            if not twin.get("title") and p.get("title"):
-                twin["title"] = p["title"]
-    people = merged
-    # Put people at the company you typed first, and mark them, so the choice screen is easy to read.
-    for p in people:
-        p["company_match"] = same_company(p.get("current_company") or "", company)
-    people.sort(key=lambda p: not p["company_match"])
+    people, idx_map, ignored = people_mod.resolve(data.get("people"), company)
     if not people:
         yield ev(3, "stop", "bad|No source confirms who this person is")
         yield end(ATTN, "Could not confirm who this person is in any source.", dropped=dropped)
         return
-    if len(people) > 1 and pick is None:
+    person = people_mod.choose(people, pick)
+    if person is None:
         yield ev(3, "flag", f"mid|{len(people)} people match this name",
                  *[f"|{i + 1}. {p['name']}, {p.get('title')}, {p.get('current_company')}" for i, p in enumerate(people)])
         yield end(ATTN, "More than one person matches. Pick the right one to continue.", choices=people, dropped=dropped)
         return
-    person = people[pick or 0]
-    # When several people share this name, drop facts that are about one of the others.
-    if len(idx_map) > 1 and len(people) > 1:
-        mine = []
-        for f in facts:
-            try:
-                who = idx_map.get(int(f["person"])) if f.get("person") is not None else None
-            except (ValueError, TypeError):
-                who = None
-            if who is not None and who is not person:
-                dropped.append({"fact": f.get("fact"), "reason": "it is about a different person with the same name"})
-            else:
-                mine.append(f)
-        facts = mine
+    # Several people share this name: drop facts that are about one of the others.
+    facts, others = people_mod.split_facts(facts, idx_map, person)
+    dropped += [{"fact": f.get("fact"), "reason": "it is about a different person with the same name"} for f in others]
     blocked_countries = [c.lower() for c in (rb.get("compliance") or {}).get("blocked_countries") or []]
     if (person.get("country") or "").lower() in blocked_countries:
         yield ev(3, "stop", f"good|{person['name']}, {person.get('title')}, {person.get('current_company')}",
@@ -371,7 +342,9 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
     p = plan(facts, person, company, rb)
     hist = history_flags(person["name"], person.get("current_company") or company, rb) if check_history else []
     log = [f"good|{person['name']}, {person.get('title')}, {person.get('current_company')}"]
-    if pick is not None:
+    if ignored:
+        log.append(f"|Ignored {ignored} {'person' if ignored == 1 else 'people'} with this name at other companies")
+    if isinstance(pick, int) and len(people) > 1:
         log.append(f"|You picked option {pick + 1}")
     if p["moved"]:
         log.append(f"mid|Now at {person.get('current_company')} (you typed {company}). Writing for the new company.")
