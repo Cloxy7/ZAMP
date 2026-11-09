@@ -90,15 +90,24 @@ def parallel_search(queries, meter):
 
 
 # ---- LLM -------------------------------------------------------------------
-def llm(prompt, model, key, meter, max_tokens=4000):
+def llm(prompt, model, key, meter, max_tokens=8000):
     def call():
         import anthropic
-        msg = anthropic.Anthropic().messages.create(
-            model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
-        # Some models return a "thinking" block first. Keep only the text blocks.
+        client = anthropic.Anthropic()
+        base = dict(model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
+        # Newer models may spend the answer budget "thinking". We want plain answers, so ask for no
+        # thinking first. If this model rejects that option, run it the normal way.
+        try:
+            msg = client.messages.create(**base, thinking={"type": "disabled"})
+        except anthropic.BadRequestError as e:
+            if "thinking" not in str(e).lower():
+                raise
+            msg = client.messages.create(**base)
+        # Keep only the text blocks (a "thinking" block has no text).
         text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
         if not text:
-            raise ServiceError("The model returned no text.")
+            kinds = ",".join(getattr(b, "type", "?") for b in msg.content) or "nothing"
+            raise ServiceError(f"The model returned no text (model {model}, stopped because: {msg.stop_reason}, got: {kinds}).")
         return {"text": text, "in": msg.usage.input_tokens, "out": msg.usage.output_tokens}
 
     value, hit = cached("llm", f"{model}|{key}|{prompt}", lambda: with_retry(call), meter)
