@@ -54,8 +54,3 @@ Extra edge cases to show if there's time: **Grace Lin** (a page hides instructio
 removed), **Ravi Kumar** (the writer adds "12-person AP team", the number check catches it),
 **Claire Dubois** (based in Canada, stopped by the compliance rules).
 
-## Before the interview
-- Set `CACHE_TTL_DAYS=0` in `.env`, then run every demo prospect once in live mode, so answers are cached and the demo can't break.
-- If you ran an older version, delete `runs.db` once so the new rulebook (with the compliance section) loads.
-- Make `golden_live.json` with 5-8 real, public finance leaders whose facts you checked by hand.
-- Delete `runs.db` for a clean dashboard, or keep it to show history.
