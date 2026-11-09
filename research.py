@@ -154,6 +154,7 @@ Return JSON only:
 Rules:
 - "people": every distinct person in the results who could be {name} at a company like {company}.
 - If the results show more than one person called {name}, every fact about a person must say which one with "person". A fact about a different {name} must never be tagged as the prospect.
+- For each person, "title" is their job title only. Do not write "former" or "(former)" in it. "current_company" is where they work NOW (null if the results do not say). If they used to work somewhere else, put that in "previous_company".
 - "finance_contacts": other people at {company} with finance titles named in the results.
 - Never invent a fact, quote or url. If a fact has no exact quote on its page, leave it out.
 - If nothing useful is found, return empty lists.
