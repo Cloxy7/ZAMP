@@ -147,11 +147,13 @@ Return JSON only:
     "url": "the exact url of that result",
     "date": "YYYY-MM-DD or null",
     "company": "which company the fact is about",
+    "person": "the number (0 for the first, 1 for the second...) of the person in \"people\" this fact is about, or null if it is about the company in general",
     "topic": one of {topics}, or "layoff", "lawsuit", "health", "scandal", "personal" (family, hobbies, private life), "other"
   }}]
 }}
 Rules:
 - "people": every distinct person in the results who could be {name} at a company like {company}.
+- If the results show more than one person called {name}, every fact about a person must say which one with "person". A fact about a different {name} must never be tagged as the prospect.
 - "finance_contacts": other people at {company} with finance titles named in the results.
 - Never invent a fact, quote or url. If a fact has no exact quote on its page, leave it out.
 - If nothing useful is found, return empty lists.
