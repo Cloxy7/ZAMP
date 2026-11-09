@@ -320,8 +320,12 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
     # same company counts as one person, so we only ask "which one?" when the choices really differ.
     merged, idx_map = [], {}
     for i, p in enumerate(people):
+        def same_title(a, b):
+            a, b = norm_text(a), norm_text(b)
+            return not a or not b or a in b or b in a
         twin = next((m for m in merged if (m.get("name") or "").strip().lower() == (p.get("name") or "").strip().lower()
-                     and same_company(m.get("current_company") or "", p.get("current_company") or "")), None)
+                     and same_company(m.get("current_company") or "", p.get("current_company") or "")
+                     and same_title(m.get("title"), p.get("title"))), None)
         if twin is None:
             merged.append(p)
             idx_map[i] = p
