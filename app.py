@@ -30,6 +30,9 @@ def run(name: str, company: str, rep: str = "Rep", pick: int | None = None):
         for event in pipeline.run(name, company, rep, pick):
             if "result" in event:
                 r = event["result"]
+                if pick is not None:   # the "Which one did you mean?" stop is replaced by the run you picked
+                    q("DELETE FROM runs WHERE name = ? AND company = ? AND review = 'pending' AND result LIKE '%\"choices\"%'",
+                      (r["name"], r["company"]))
                 cur = q("INSERT INTO runs (ts, name, company, status, rulebook_version, cost, duration, result) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (time.time(), r["name"], r["company"], r["status"], r["rulebook_version"],
