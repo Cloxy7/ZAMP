@@ -318,14 +318,17 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
     people = data.get("people", [])
     # The same person often shows up twice (two pages, slightly different title). Same name at the
     # same company counts as one person, so we only ask "which one?" when the choices really differ.
-    merged = []
-    for p in people:
+    merged, idx_map = [], {}
+    for i, p in enumerate(people):
         twin = next((m for m in merged if (m.get("name") or "").strip().lower() == (p.get("name") or "").strip().lower()
                      and same_company(m.get("current_company") or "", p.get("current_company") or "")), None)
         if twin is None:
             merged.append(p)
-        elif not twin.get("title") and p.get("title"):
-            twin["title"] = p["title"]
+            idx_map[i] = p
+        else:
+            idx_map[i] = twin
+            if not twin.get("title") and p.get("title"):
+                twin["title"] = p["title"]
     people = merged
     # Put people at the company you typed first, and mark them, so the choice screen is easy to read.
     for p in people:
@@ -341,6 +344,19 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
         yield end(ATTN, "More than one person matches. Pick the right one to continue.", choices=people, dropped=dropped)
         return
     person = people[pick or 0]
+    # When several people share this name, drop facts that are about one of the others.
+    if len(idx_map) > 1 and len(people) > 1:
+        mine = []
+        for f in facts:
+            try:
+                who = idx_map.get(int(f["person"])) if f.get("person") is not None else None
+            except (ValueError, TypeError):
+                who = None
+            if who is not None and who is not person:
+                dropped.append({"fact": f.get("fact"), "reason": "it is about a different person with the same name"})
+            else:
+                mine.append(f)
+        facts = mine
     blocked_countries = [c.lower() for c in (rb.get("compliance") or {}).get("blocked_countries") or []]
     if (person.get("country") or "").lower() in blocked_countries:
         yield ev(3, "stop", f"good|{person['name']}, {person.get('title')}, {person.get('current_company')}",
