@@ -327,6 +327,10 @@ def run(name, company, rep="Rep", pick=None, check_history=True):
         elif not twin.get("title") and p.get("title"):
             twin["title"] = p["title"]
     people = merged
+    # Put people at the company you typed first, and mark them, so the choice screen is easy to read.
+    for p in people:
+        p["company_match"] = same_company(p.get("current_company") or "", company)
+    people.sort(key=lambda p: not p["company_match"])
     if not people:
         yield ev(3, "stop", "bad|No source confirms who this person is")
         yield end(ATTN, "Could not confirm who this person is in any source.", dropped=dropped)
