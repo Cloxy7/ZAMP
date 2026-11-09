@@ -1,4 +1,5 @@
 """Web server. Run:  uvicorn app:app --reload   then open http://localhost:8000"""
+import logging
 import json, time
 from dotenv import load_dotenv
 load_dotenv()   # must happen before the modules below read their settings
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 import evaluate, learning, pipeline, research, rules
 from db import q
 
+log = logging.getLogger("opener")
 app = FastAPI(title="Outreach Drafter")
 
 
@@ -27,6 +29,22 @@ def mode():
 @app.get("/run")
 def run(name: str, company: str, rep: str = "Rep", pick: int | None = None):
     def stream():
+        try:
+            yield from _stream_events()
+        except Exception as e:   # last safety net: never a broken stream or a blank page
+            log.exception("run failed")
+            msg = (f"Something unexpected went wrong ({type(e).__name__}). Nothing was sent and nothing was guessed. "
+                   "Try again; if it repeats, tell the person who built this.")
+            fail = {"name": name, "company": company, "rep": rep, "status": pipeline.STOPPED, "reason": msg,
+                    "rulebook_version": rules.current()[0], "cost": research.Meter().summary(), "duration": 0,
+                    "mock": research.MOCK}
+            fail["run_id"] = q("INSERT INTO runs (ts, name, company, status, rulebook_version, cost, duration, result) "
+                               "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                               (time.time(), name, company, fail["status"], fail["rulebook_version"], 0, 0,
+                                json.dumps(fail))).lastrowid
+            yield f"data: {json.dumps({'result': fail})}\n\n"
+
+    def _stream_events():
         for event in pipeline.run(name, company, rep, pick):
             if "result" in event:
                 r = event["result"]
