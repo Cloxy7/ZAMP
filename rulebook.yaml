@@ -1,32 +1,42 @@
-# A general-purpose rulebook: write a first email to anyone, about anything you offer.
-# In the app: Rulebook tab -> "Edit the rulebook as text" -> paste this in -> change the
-# two lines marked CHANGE ME -> Save as new version.
+# Zamp rulebook that writes to anyone (not only finance roles).
+# Rulebook tab -> "Edit the rulebook as text" -> delete everything -> paste this -> Save as new version.
 
-seller: CHANGE ME (your name or company)
+seller: Zamp
 what_we_sell: >-
-  CHANGE ME. One or two plain sentences on what you offer or why you are writing.
+  AI employees that run finance back-office work end to end, such as invoice
+  processing, chargebacks and vendor onboarding, and only ask a person when unsure.
 
-# "anyone" = no job-title check. Use "titles" (and fill buyer_titles) to limit it again.
+# "anyone" = no job-title check. Change to "titles" to go back to finance roles only.
 who_to_email: anyone
-buyer_titles: []
+buyer_titles: [cfo, chief financial, vp finance, head of finance, finance director, controller, ap manager, accounts payable, finance manager, treasurer]
 not_buyer_titles: []
 
-do_not_contact: []
+do_not_contact:
+  - company: Acme Robotics
+    reason: existing customer
 
-# How much each kind of news matters (high / medium / low) and the sentence that links it to you
+# How much each kind of news matters (high / medium / low), and the sentence that links it to Zamp
 topics:
-  new-role:  {priority: high,   link: "A new role is a natural moment to talk about what comes next."}
-  launch:    {priority: high,   link: "A launch is a busy time, and that is often when extra help matters."}
-  funding:   {priority: medium, link: "Growth after new funding usually opens up new priorities."}
-  hiring:    {priority: medium, link: "Hiring usually means the team is growing and needs are changing."}
-  talk:      {priority: medium, link: "You spoke about this publicly, so it is clearly something you care about."}
-  expansion: {priority: low,    link: "Expanding usually brings new questions."}
-  award:     {priority: low,    link: "Congratulations on that. It says a lot about the team."}
+  hiring-ap:   {priority: high,   link: "Adding AP headcount is often a sign invoice volume is outgrowing the process."}
+  pain-close:  {priority: high,   link: "Long closes usually come from manual invoice matching and chasing exceptions."}
+  chargebacks: {priority: high,   link: "Dispute queues are hard to staff for when volume suddenly jumps."}
+  new-role:    {priority: medium, link: "The first months in a new seat are usually when people look hard at how the team's work runs."}
+  funding:     {priority: medium, link: "Growth after a raise usually means more vendors, more invoices and more back-office work."}
+  erp:         {priority: medium, link: "A system move is a good moment to fix how invoices get matched and approved."}
+  launch:      {priority: medium, link: "A launch usually brings more customers and more back-office work behind the scenes."}
+  expansion:   {priority: low,    link: "New sites usually bring new vendors and more invoices to process."}
+  award:       {priority: low,    link: "Growth like that tends to mean more vendors to pay."}
 
-never_mention: [layoff, laid off, lawsuit, sued, death, died, illness, bankruptcy, investigation, scandal]
+# Never use these as a hook or mention them in a draft
+never_mention: [layoff, laid off, lawsuit, sued, death, died, illness, bankruptcy, investigation, scandal, mental health, burnout, depression, anxiety, divorce, cancer, diagnosis, harassment, discrimination]
 
 angles:
-  default: what matters most in their role
+  cfo: cost and how fast the books close
+  controller: accuracy and a clean audit trail
+  vp finance: scaling finance without adding headcount
+  head of finance: scaling finance without adding headcount
+  ap manager: less manual matching and fewer exceptions
+  default: less manual work in the back office
 
 limits:
   strong_hook: 0.60
@@ -42,7 +52,8 @@ compliance:
   work_facts_only: true
 
 writing_rules:
-  - Open with the fact, then link it to what we offer in one sentence.
+  - Open with the fact, then link it to what Zamp does in one sentence.
   - One clear ask, a 15-minute call. No meeting times or calendar links.
-  - Plain words. No flattery and no hype.
-banned_phrases: [game-changer, revolutionary, synergy, "I hope this email finds you well", "circle back"]
+  - Plain, human tone. No flattery and no buzzwords.
+
+banned_phrases: [hope this finds you, quick question, synergy, just checking in, circle back, game-changing, revolutionary]
